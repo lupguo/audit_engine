@@ -1,19 +1,22 @@
 package tool
 
-import "log"
+import (
+	"log"
+)
 
-func ErrorLog(err error, msg string) {
+func ErrorLog(err error, msg string) error {
 	if err != nil {
-		log.Printf("%s: %s", err, msg)
+		log.Printf("[x] %s: %s", err, msg)
 	}
+	return err
 }
 
 func ErrorPanic(err error, msg string) {
 	if err != nil {
-		log.Panicf("%s: %s", err, msg)
+		log.Fatalf("[x] %s: %s", err, msg)
 	}
 }
 
-func PrettyPrint(msg string, data interface{}) {
-	log.Printf("[*] %s: %v", msg, data)
+func PrettyPrint(msg ...interface{}) {
+	log.Println("[*]", msg)
 }
