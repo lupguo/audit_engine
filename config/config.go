@@ -1,44 +1,54 @@
 package config
 
 import (
+	"fmt"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/tkstorm/audit_engine/msyql"
+	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/tool"
 )
 
-func Version() {
-	CFG.Name = "Rule Engine"
-	CFG.Version = "version 0.0.1 beta"
-	tool.PrettyPrint(CFG.Name, CFG.Version)
+type EngineInfo struct {
+	Name    string
+	Version string
 }
 
-var CFG struct {
+type CFG struct {
+	cmd        CmdArgs
+	EInfo      EngineInfo
 	Test       bool
 	ConfigFile string
-	TestModule string
-	Name       string
-	Version    string
-	MqConfig   RabbitMqConfig
-	DbConfig   MysqlConfig
+	RabbitMq   rabbit.Config
+	Mysql      mysql.Config
 }
 
-func init() {
-	Version()
+//version info
+func (cfg *CFG) GetVersion(egi EngineInfo) string {
+	return fmt.Sprintf("%s, %s", egi.Name, egi.Version)
+}
 
-	//get config file
-	pflag.BoolVarP(&CFG.Test, "test", "t", false, "test message publish, need with -m")
-	pflag.StringVarP(&CFG.ConfigFile, "config_file", "c", "./config.json", "rule engine config file")
-	pflag.StringVarP(&CFG.TestModule, "test_module", "m", "post_audit_msg", "post audit msg test")
-	pflag.Parse()
-
+//config init
+func (cfg *CFG) Init(cmd CmdArgs) {
 	//read config file
-	viper.SetConfigFile(CFG.ConfigFile)
+	viper.SetConfigFile(cmd.Cfg)
 	if err := viper.ReadInConfig(); err != nil {
 		tool.ErrorPanic(err, "viper read config error")
 	}
 
+	//test
+	cfg.cmd = cmd
+	cfg.Test = cmd.T
+	cfg.ConfigFile = cmd.Cfg
+
+	//version
+	cfg.EInfo = EngineInfo{
+		Name:    viper.GetString("name"),
+		Version: viper.GetString("version"),
+	}
+
 	//init rabbitmq config
-	CFG.MqConfig = RabbitMqConfig{
+	cfg.RabbitMq = rabbit.Config{
 		Host: viper.GetString("rabbitmq.host"),
 		Port: viper.GetInt("rabbitmq.port"),
 		User: viper.GetString("rabbitmq.user"),
@@ -46,12 +56,29 @@ func init() {
 	}
 
 	//init mysql config
-	CFG.DbConfig = MysqlConfig{
+	cfg.Mysql = mysql.Config{
 		Host: viper.GetString("mysql.host"),
 		Port: viper.GetInt("mysql.port"),
 		User: viper.GetString("mysql.user"),
 		Pass: viper.GetString("mysql.pass"),
 	}
 
-	tool.PrettyPrint("config_file", CFG.ConfigFile)
+}
+
+func (cfg *CFG) PrintEnv() {
+	//print config
+	tool.PrettyPrint(cfg.GetVersion(cfg.EInfo))
+	tool.PrettyPrint("config_file:", cfg.ConfigFile)
+	tool.PrettyPrint("testing:", cfg.Test)
+
+	//cmd print
+	tool.PrettyPrint("cmd input", fmt.Sprintf("%+v", cfg.cmd))
+}
+
+func (cfg *CFG) PrintVersion() {
+	tool.PrettyPrint(cfg.GetVersion(cfg.EInfo))
+}
+
+func (cfg *CFG) PrintHelpInfo() {
+	pflag.PrintDefaults()
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/streadway/amqp"
 	"github.com/tkstorm/audit_engine/config"
-	"github.com/tkstorm/audit_engine/mq"
+	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/tool"
 )
 
@@ -23,11 +23,11 @@ func ReceiveSoaAuditData(mqcf config.RabbitMqConfig) {
 	defer ch.Close()
 
 	//create mq
-	q, err := mq.Create(*ch, config.AuditQueName["SOA_AUDIT_MSG"])
+	q, err := rabbit.Create(*ch, config.AuditQueName["SOA_AUDIT_MSG"])
 	tool.ErrorPanic(err, "Failed to declare queue")
 
 	//consume
-	mq.ConsumeBind(*ch, q.Name, doWork)
+	rabbit.ConsumeBind(*ch, q.Name, doWork)
 }
 
 //worker
