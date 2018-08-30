@@ -10,7 +10,8 @@ type CmdArgs struct {
 	V bool
 	H bool
 	//test
-	T bool
+	T     bool
+	NoAck bool
 	//config file
 	Cfg string
 	//mq
@@ -27,6 +28,7 @@ func (cmd *CmdArgs) Parse() {
 	pflag.BoolVarP(&cmd.H, "help", "h", false, "show this message")
 	//test
 	pflag.BoolVarP(&cmd.T, "test", "t", false, `test model for msg publish or consume`)
+	pflag.BoolVar(&cmd.NoAck, "no_ack", false, `do not return ack the message to the Broker`)
 	//get config file
 	pflag.StringVarP(&cmd.Cfg, "config_file", "c", "./config.json", "config file")
 	//mq

@@ -2,10 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/streadway/amqp"
 	"github.com/tkstorm/audit_engine/config"
 	"github.com/tkstorm/audit_engine/rabbit"
+	"github.com/tkstorm/audit_engine/task"
 	"github.com/tkstorm/audit_engine/tool"
-	"log"
 )
 
 var (
@@ -20,22 +21,15 @@ func main() {
 	cmd.Parse()
 
 	//config init from cmdline args
-	cfg.Init(cmd)
+	cfg.InitByCmd(cmd)
 
 	//show message
-	switch {
-	case cmd.V:
-		cfg.PrintVersion()
+	if out := cfg.ShowInfo(cmd); out {
 		return
-	case cmd.H:
-		cfg.PrintHelpInfo()
-		return
-	default:
-		cfg.PrintEnv()
 	}
 
 	//rabbitmq init conn & channel
-	mq.Init(cfg.RabbitMq)
+	mq.Init(cfg.RabbitMq["soa"])
 	defer mq.Close()
 
 	//create mq
@@ -48,37 +42,17 @@ func main() {
 		mq.Publish(q.Name, msgData(q.Name), cmd.RepNumber)
 	} else {
 		tool.PrettyPrint("message consume...")
-		mq.ConsumeBind(q.Name, func() func([]byte) bool {
-			if cmd.T {
-				return printMessage
-			} else {
-				return doAuditWork
-			}
-		}())
+		tk := task.ConsumeTask{cfg, rabbit.MQ{}, amqp.Queue{}}
+		qn := q.Name
+		fn := tk.Work(qn, cmd.T)
+
+		//task consume init
+		tk.Start(qn, cmd.T)
+		defer tk.Stop(qn, cmd.T)
+
+		//task go
+		mq.ConsumeBind(qn, fn, cmd.NoAck, cmd.T)
 	}
-}
-
-//print message
-func printMessage(data []byte) bool {
-	log.Println("Working...")
-	//tool.PrettyPrint(string(data))
-	log.Println("Done")
-	return true
-}
-
-//消息解码，引擎分析，DB入库
-func doAuditWork(data []byte) bool {
-	log.Println("Begin audit...")
-
-	//消费auditMsg
-	var m rabbit.AuditMsg
-	err := json.Unmarshal(data, &m)
-	tool.ErrorPanic(err, "Json unmarshal failed")
-
-	tool.PrettyPrint(m)
-	log.Println("Done")
-
-	return true
 }
 
 // select queue and prepare message data

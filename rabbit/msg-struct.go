@@ -1,11 +1,16 @@
 package rabbit
 
 type QueueName map[string]string
+type QueueWork map[string]func([]byte)
 
+//-----------------
+//soa
+//-----------------
 //审核响应消息结构
 type AuditBackMsg struct {
 	SiteCode    string //站点
 	BussUuid    string //唯一业务ID(default uuid=0)
+	AuditMark   string //消息审核模板类型
 	AuditStatus int    //审核状态(1.审核中 2.审核通过 3.审核不通过)
 	AuditRemark string //审核备注
 	AuditUid    int    //审核人ID
@@ -37,4 +42,14 @@ type BusinessData struct {
 	CalculatePrice float64 //计算结果价格
 	Rate           float64 //利润率
 	ChangeType     int     //价格变更类型：1：人工 2：系统
+}
+
+//-----------------
+//obs
+//-----------------
+
+//人工审核通过数据结构 //{"message_id":"1","status":"2"}
+type PersonAuditResult struct {
+	msgId  int64
+	status int
 }

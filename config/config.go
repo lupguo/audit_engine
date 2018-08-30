@@ -19,7 +19,7 @@ type CFG struct {
 	EInfo      EngineInfo
 	Test       bool
 	ConfigFile string
-	RabbitMq   rabbit.Config
+	RabbitMq   map[string]rabbit.Config
 	Mysql      mysql.Config
 }
 
@@ -29,7 +29,7 @@ func (cfg *CFG) GetVersion(egi EngineInfo) string {
 }
 
 //config init
-func (cfg *CFG) Init(cmd CmdArgs) {
+func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 	//read config file
 	viper.SetConfigFile(cmd.Cfg)
 	if err := viper.ReadInConfig(); err != nil {
@@ -48,11 +48,15 @@ func (cfg *CFG) Init(cmd CmdArgs) {
 	}
 
 	//init rabbitmq config
-	cfg.RabbitMq = rabbit.Config{
-		Host: viper.GetString("rabbitmq.host"),
-		Port: viper.GetInt("rabbitmq.port"),
-		User: viper.GetString("rabbitmq.user"),
-		Pass: viper.GetString("rabbitmq.pass"),
+	cfg.RabbitMq = make(map[string]rabbit.Config)
+	for _, v := range []string{"soa", "gb"} {
+		cfg.RabbitMq[v] = rabbit.Config{
+			Host:  viper.GetString("rabbitmq." + v + ".host"),
+			Port:  viper.GetInt("rabbitmq." + v + ".port"),
+			User:  viper.GetString("rabbitmq." + v + ".user"),
+			Pass:  viper.GetString("rabbitmq." + v + ".pass"),
+			Vhost: viper.GetString("rabbitmq." + v + ".vhost"),
+		}
 	}
 
 	//init mysql config
@@ -63,6 +67,20 @@ func (cfg *CFG) Init(cmd CmdArgs) {
 		Pass: viper.GetString("mysql.pass"),
 	}
 
+}
+
+//show all info
+func (cfg *CFG) ShowInfo(cmd CmdArgs) (out bool) {
+	switch {
+	case cmd.V:
+		cfg.PrintVersion()
+	case cmd.H:
+		cfg.PrintHelpInfo()
+	default:
+		cfg.PrintEnv()
+		return false
+	}
+	return true
 }
 
 func (cfg *CFG) PrintEnv() {

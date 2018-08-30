@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Host string
-	Port int
-	User string
-	Pass string
+	Host  string
+	Port  int
+	User  string
+	Pass  string
+	Vhost string
 }
 
 type MQ struct {
@@ -28,7 +29,7 @@ func (mq *MQ) Close() {
 func (mq *MQ) Init(mqcf Config) {
 	var err error
 	//conn
-	url := fmt.Sprintf("amqp://%s:%s@%s:%d", mqcf.User, mqcf.Pass, mqcf.Host, mqcf.Port)
+	url := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", mqcf.User, mqcf.Pass, mqcf.Host, mqcf.Port, mqcf.Vhost)
 	tool.PrettyPrint(url)
 	mq.conn, err = amqp.Dial(url)
 	tool.ErrorPanic(err, "Failed to connect to RabbitMQ")
@@ -58,7 +59,7 @@ func (mq *MQ) Create(qn string) amqp.Queue {
 }
 
 //队列消费程序绑定
-func (mq *MQ) ConsumeBind(qn string, fn func(data []byte) bool) {
+func (mq *MQ) ConsumeBind(qn string, fn func([]byte), noAck bool, istest bool) {
 	//consume resister
 	msgs, err := mq.ch.Consume(
 		qn,
@@ -72,12 +73,14 @@ func (mq *MQ) ConsumeBind(qn string, fn func(data []byte) bool) {
 	tool.ErrorLog(err, "Failed to register a consumer")
 
 	//consume work
-	forever := make(chan bool, 10)
+	forever := make(chan bool)
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s\n", d.Body)
 			fn(d.Body)
-			d.Ack(false)
+			if !noAck {
+				d.Ack(false)
+			}
 		}
 	}()
 	log.Printf("[*] Waiting for message. To exit press CTRL+C")
