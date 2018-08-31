@@ -3,25 +3,25 @@
   "version": "v0.0.1 beta",
   "rabbitmq": {
     "soa": {
-      "vhost": "SOA_PROVIDER",
-      "host": "10.60.34.84",
+      "vhost": "mac_soa_vhost",
+      "host": "localhost",
       "port": 5672,
-      "user": "admin",
-      "pass": "admin@hqyg"
+      "user": "guest",
+      "pass": "guest"
     },
     "gb": {
-      "vhost": "SYS_OBS",
-      "host": "10.60.34.84",
+      "vhost": "mac_gb_vhost",
+      "host": "localhost",
       "port": 5672,
-      "user": "admin",
-      "pass": "admin@hqyg"
+      "user": "guest",
+      "pass": "guest"
     }
   },
   "mysql": {
-    "host": "192.168.6.71",
+    "host": "localhost",
     "port": 3306,
     "user": "root",
-    "pass": "NvGHHsQvo3!90YS@",
+    "pass": "Secret123.",
     "dbname": "obs_gb_test",
     "protocol": "tcp"
   }
