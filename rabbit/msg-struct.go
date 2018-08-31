@@ -20,14 +20,14 @@ type AuditBackMsg struct {
 
 //审核消息结构
 type AuditMsg struct {
-	SiteCode   string       //站点
-	AuditMark  string       //消息审核模板类型
-	BussUuid   string       //唯一业务ID
-	BussData   BusinessData //业务审核基础数据
-	Module     string       //消息来源模块
-	CreateUid  int          //消息创建者UID
-	CreateUser string       //消息创建者用户
-	CreateTime int          //消息创建时间
+	SiteCode   string //站点
+	AuditMark  string //消息审核模板类型
+	BussUuid   string `json:"businessUuid"` //唯一业务ID
+	BussData   string `json:"businessData"` //业务审核基础数据
+	Module     string //消息来源模块
+	CreateUid  int    //消息创建者UID
+	CreateUser string //消息创建者用户
+	CreateTime int    //消息创建时间
 }
 
 //价格审核业务数据结构

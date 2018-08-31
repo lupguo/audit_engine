@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/tkstorm/audit_engine/msyql"
+	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/tool"
 )
@@ -20,8 +20,10 @@ type CFG struct {
 	Test       bool
 	ConfigFile string
 	RabbitMq   map[string]rabbit.Config
-	Mysql      mysql.Config
+	Mysql      mydb.Config
 }
+
+var GlobaleCFG CFG
 
 //version info
 func (cfg *CFG) GetVersion(egi EngineInfo) string {
@@ -60,13 +62,17 @@ func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 	}
 
 	//init mysql config
-	cfg.Mysql = mysql.Config{
-		Host: viper.GetString("mysql.host"),
-		Port: viper.GetInt("mysql.port"),
-		User: viper.GetString("mysql.user"),
-		Pass: viper.GetString("mysql.pass"),
+	cfg.Mysql = mydb.Config{
+		Host:     viper.GetString("mysql.host"),
+		Port:     viper.GetInt("mysql.port"),
+		User:     viper.GetString("mysql.user"),
+		Pass:     viper.GetString("mysql.pass"),
+		DbName:   viper.GetString("mysql.dbname"),
+		Protocol: viper.GetString("mysql.protocol"),
 	}
 
+	//save global cfg
+	GlobaleCFG = *cfg
 }
 
 //show all info

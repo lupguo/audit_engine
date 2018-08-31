@@ -76,7 +76,7 @@ func (mq *MQ) ConsumeBind(qn string, fn func([]byte), noAck bool, istest bool) {
 	forever := make(chan bool)
 	go func() {
 		for d := range msgs {
-			log.Printf("Received a message: %s\n", d.Body)
+			tool.PrettyPrintf("Received a message: %s", d.Body)
 			fn(d.Body)
 			if !noAck {
 				d.Ack(false)

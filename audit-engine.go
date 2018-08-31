@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/streadway/amqp"
 	"github.com/tkstorm/audit_engine/config"
+	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/task"
 	"github.com/tkstorm/audit_engine/tool"
@@ -42,7 +43,7 @@ func main() {
 		mq.Publish(q.Name, msgData(q.Name), cmd.RepNumber)
 	} else {
 		tool.PrettyPrint("message consume...")
-		tk := task.ConsumeTask{cfg, rabbit.MQ{}, amqp.Queue{}}
+		tk := task.ConsumeTask{cfg, rabbit.MQ{}, amqp.Queue{}, mydb.DbMysql{}}
 		qn := q.Name
 		fn := tk.Work(qn, cmd.T)
 
