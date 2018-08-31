@@ -30,7 +30,7 @@ func main() {
 	}
 
 	//rabbitmq init conn & channel
-	mq.Init(cfg.RabbitMq["soa"])
+	mq.Init(selectCfg(cmd.QName))
 	defer mq.Close()
 
 	//create mq
@@ -56,12 +56,23 @@ func main() {
 	}
 }
 
+func selectCfg(qn string) rabbit.Config {
+	switch qn {
+	case config.QueName["SOA_AUDIT_MSG"]:
+		return cfg.RabbitMq["soa"]
+	case config.QueName["SOA_AUDIT_BACK_MSG"]:
+	case config.QueName["OBS_RULE_CHANGE_MSG"]:
+	case config.QueName["OBS_PERSON_AUDIT_RESULT"]:
+		return cfg.RabbitMq["gb"]
+	}
+	return cfg.RabbitMq["gb"]
+}
+
 // select queue and prepare message data
 func msgData(qn string) []byte {
 	if cmd.MsgData != "" {
 		return []byte(cmd.MsgData)
 	}
-
 	switch qn {
 	case config.QueName["SOA_AUDIT_BACK_MSG"]:
 		return getAuditBackMsg()
@@ -70,7 +81,7 @@ func msgData(qn string) []byte {
 	case config.QueName["OBS_RULE_CHANGE_MSG"]:
 		return []byte(`{"action":"upd|del|add","templete_id":1}`)
 	case config.QueName["OBS_PERSON_AUDIT_RESULT"]:
-		return []byte(`{"message_id":"1","status":"2"}`)
+		return []byte(`{"message_id":1,"status": 2}`)
 	default:
 		return []byte("Heyman, Cool")
 	}
@@ -95,5 +106,5 @@ func getAuditBackMsg() []byte {
 
 //审核消息
 func getAuditMsg() []byte {
-	return []byte(`{"auditMark":"goods-price-check","businessData":"{\"calculatePrice\":52.02,\"catId\":11286,\"changeType\":1,\"chargePrice\":59.00000,\"goodSn\":\"YL4225902\",\"pipelineCode\":\"GB\",\"rate\":3.68,\"sysLabelId\":-1,\"virWhCode\":\"1433363\"}","businessUuid":"13710","createTime":1535427621607,"createUser":"huang","createUserId":0,"module":"goods","siteCode":"GB"}`)
+	return []byte(`{"auditMark":"goods-price-check","bussData":"{\"calculatePrice\":52.02,\"catId\":11286,\"changeType\":1,\"chargePrice\":59.00000,\"goodSn\":\"YL4225902\",\"pipelineCode\":\"GB\",\"rate\":3.68,\"sysLabelId\":-1,\"virWhCode\":\"1433363\"}","bussUuid":"13710","createTime":1535427621607,"createUser":"huang","createUserId":0,"module":"goods","siteCode":"GB"}`)
 }

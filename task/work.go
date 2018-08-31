@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/streadway/amqp"
+	"github.com/tkstorm/audit_engine/bucket"
 	"github.com/tkstorm/audit_engine/config"
 	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
@@ -35,9 +36,9 @@ func (tk *ConsumeTask) Start(qn string, test bool) {
 		tk.TkMq.Init(cfg.RabbitMq["gb"])
 		//create mq
 		tk.Que = tk.TkMq.Create(m["SOA_AUDIT_BACK_MSG"])
-
+		//初始化一个db连接
+		tk.TkDb.Connect(config.GlobaleCFG.Mysql)
 	}
-
 }
 
 //停止则回收相关信息
@@ -164,23 +165,73 @@ func (tk *ConsumeTask) workUpdateRule(msg []byte) {
 func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) {
 	tool.PrettyPrint("Update Rule Result Task...")
 
+	db := tk.TkDb.Db
+
 	//obs audit result
 	var par rabbit.PersonAuditResult
 	err := json.Unmarshal(msg, &par)
-	//sql update `audit_record` & select * from `audit_record`
-
-	//投递审核结果消息给SOA
-	var bk = rabbit.AuditBackMsg{
-		SiteCode:    "GB",
-		BussUuid:    "13710",
-		AuditStatus: 2,
-		AuditRemark: "系统审核通过",
-		AuditUid:    0,
-		AuditUser:   "系统",
-		AuditTime:   1535439935871,
+	if err != nil {
+		tool.ErrorLog(err, "unmarshal person audit result fail")
+		return
 	}
+
+	//sql update `audit_record` & select * from `audit_record`
+	sql := "UPDATE audit_message SET audit_status=? WHERE message_id = ?"
+	stmt, err := db.Prepare(sql)
+	if err != nil {
+		tool.PrettyPrint(err)
+		return
+	}
+
+	//人工审核状态转换
+	rst, err := stmt.Exec(bucket.AudStat[par.Status], par.MsgId)
+	if err != nil {
+		tool.PrettyPrint(err)
+		return
+	}
+	stmt.Close()
+	rn, err := rst.RowsAffected()
+	if err != nil {
+		tool.PrettyPrint(err)
+		return
+	}
+	tool.PrettyPrintf("Success update rows: %d", rn)
+
+	//select info & return to soa_back_msg
+	sql = `
+SELECT
+  site_code,
+  business_uuid,
+  audit_mark,
+  audit_status,
+  mr.audit_explain,
+  mr.user_id,
+  mr.status,
+  mr.create_time
+FROM audit_record  AS mr LEFT JOIN audit_message as m USING(message_id)
+WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
+	rows := db.QueryRow(sql, par.MsgId)
+	if err != nil {
+		tool.PrettyPrint(err)
+		return
+	}
+	var bk rabbit.AuditBackMsg
+	rows.Scan(
+		&bk.SiteCode,
+		&bk.BussUuid,
+		&bk.AuditMark,
+		&bk.AuditStatus,
+		&bk.AuditRemark,
+		&bk.AuditUid,
+		nil,
+		&bk.AuditTime,
+	)
+	tool.PrettyPrintf("%+v", bk)
 	b, err := json.Marshal(bk)
-	tool.ErrorLog(err, "publish json marshal fail")
+	if err != nil {
+		tool.ErrorLog(err, "marshal result msg data fail")
+		return
+	}
 
 	//msg return
 	tk.backMsg(config.QueName["SOA_AUDIT_BACK_MSG"], b)

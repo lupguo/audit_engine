@@ -24,7 +24,7 @@ type CmdArgs struct {
 
 func (cmd *CmdArgs) Parse() {
 	//engine
-	pflag.BoolVarP(&cmd.V, "version", "v", false, "version info")
+	pflag.BoolVarP(&cmd.V, "version", "V", false, "version info")
 	pflag.BoolVarP(&cmd.H, "help", "h", false, "show this message")
 	//test
 	pflag.BoolVarP(&cmd.T, "test", "t", false, `test model for msg publish or consume`)

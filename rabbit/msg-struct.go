@@ -22,8 +22,8 @@ type AuditBackMsg struct {
 type AuditMsg struct {
 	SiteCode   string //站点
 	AuditMark  string //消息审核模板类型
-	BussUuid   string `json:"businessUuid"` //唯一业务ID
-	BussData   string `json:"businessData"` //业务审核基础数据
+	BussUuid   string `json:"bussUuid"` //唯一业务ID
+	BussData   string `json:"bussData"` //业务审核基础数据
 	Module     string //消息来源模块
 	CreateUid  int    //消息创建者UID
 	CreateUser string //消息创建者用户
@@ -50,6 +50,6 @@ type BusinessData struct {
 
 //人工审核通过数据结构 //{"message_id":"1","status":"2"}
 type PersonAuditResult struct {
-	msgId  int64
-	status int
+	MsgId  int `json:"message_id"`
+	Status int
 }

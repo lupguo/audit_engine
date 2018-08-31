@@ -6,21 +6,23 @@
       "vhost": "SOA_PROVIDER",
       "host": "10.60.34.84",
       "port": 5672,
-      "user": "guest",
-      "pass": "guest"
+      "user": "admin",
+      "pass": "admin@hqyg"
     },
     "gb": {
-      "vhost": "WEB_GB",
+      "vhost": "SYS_OBS",
       "host": "10.60.34.84",
       "port": 5672,
-      "user": "guest",
-      "pass": "guest"
+      "user": "admin",
+      "pass": "admin@hqyg"
     }
   },
   "mysql": {
-    "host": "localhost",
+    "host": "192.168.6.71",
     "port": 3306,
     "user": "root",
-    "pass": "Secret123."
+    "pass": "NvGHHsQvo3!90YS@",
+    "dbname": "obs_gb_test",
+    "protocol": "tcp"
   }
 }

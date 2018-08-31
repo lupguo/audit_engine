@@ -98,6 +98,6 @@ func (mq *MQ) Publish(qn string, data []byte, n int) {
 	for i := 0; i < n; i++ {
 		err := mq.ch.Publish("", qn, false, false, msg)
 		tool.ErrorLog(err, "Failed to publish a message")
-		log.Printf("Send message finish")
+		tool.PrettyPrint("Send message finish")
 	}
 }

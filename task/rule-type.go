@@ -15,8 +15,8 @@ type AuditType struct {
 	typeId    int
 	typeTitle string
 	auditMark string
-	typeDesc  string
-	ruleList  []AuditRule
+	//typeDesc  string
+	ruleList []AuditRule
 }
 
 //规则条目
@@ -48,8 +48,7 @@ func GetRuleItems() AuditTemplate {
 	defer dbMysql.Close()
 
 	//---------审核类型
-	sql := `select id, title,audit_mark,description from audit_template;`
-	tool.PrettyPrint(sql)
+	sql := `select id, title,audit_mark from audit_template;`
 	rows, err := dbMysql.Db.Query(sql)
 	if err != nil {
 		log.Fatal(err)
@@ -59,7 +58,7 @@ func GetRuleItems() AuditTemplate {
 	var typeIds []interface{}
 	for rows.Next() {
 		var at AuditType
-		rows.Scan(&at.typeId, &at.typeTitle, &at.auditMark, &at.typeDesc)
+		rows.Scan(&at.typeId, &at.typeTitle, &at.auditMark)
 		aTypes = append(aTypes, at)
 		//审核ID
 		typeIds = append(typeIds, at.typeId)
@@ -68,7 +67,7 @@ func GetRuleItems() AuditTemplate {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tool.PrettyPrint("aTypes:\n", aTypes)
+	//tool.PrettyPrint("aTypes:\n", aTypes)
 	rows.Close()
 
 	//----------规则条目
@@ -100,8 +99,8 @@ func GetRuleItems() AuditTemplate {
 	if err != nil {
 		log.Fatal(err)
 	}
-	tool.PrettyPrint("aRuls:\n", aRuls)
-	tool.PrettyPrint("ruleGroups:\n", ruleGroups)
+	//tool.PrettyPrint("aRuls:\n", aRuls)
+	//tool.PrettyPrint("ruleGroups:\n", ruleGroups)
 	rows.Close()
 	stmt.Close()
 
@@ -111,7 +110,7 @@ func GetRuleItems() AuditTemplate {
 		aTypes[i].ruleList = ruleGroups[at.typeId]
 		hashAuditTemplate[at.auditMark] = aTypes[i]
 	}
-	tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
+	//tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
 
 	//--------比较项
 	sql = "select rule_id,compare_type,field,operation,value from audit_rule_item WHERE rule_id IN (" + mydb.Concat(rids) + ")"
@@ -135,7 +134,7 @@ func GetRuleItems() AuditTemplate {
 
 		itemGroups[k.itemId] = append(itemGroups[k.itemId], k)
 	}
-	tool.PrettyPrint("itemGroups:\n", itemGroups)
+	//tool.PrettyPrint("itemGroups:\n", itemGroups)
 
 	//哈希表填充
 	for k, t := range hashAuditTemplate {
@@ -144,7 +143,7 @@ func GetRuleItems() AuditTemplate {
 		}
 	}
 
-	tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
+	//tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
 
 	return hashAuditTemplate
 }
