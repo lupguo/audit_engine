@@ -135,6 +135,11 @@ func (tk *ConsumeTask) insertAuditMsg(ad rabbit.AuditMsg, bd rabbit.BusinessData
 	}
 	defer stmt.Close()
 
+	//检测审核规则是否为空
+	if len(at.ruleList) == 0 {
+		tool.ErrorLogP("audit type rule list is empty")
+		return
+	}
 	result, err := stmt.Exec(
 		ad.SiteCode,
 		at.typeId,

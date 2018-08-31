@@ -13,6 +13,11 @@ func ErrorLog(err error, msg string) error {
 }
 
 //error log
+func ErrorLogP(msg string) {
+	log.Println("[x]", msg)
+}
+
+//error log
 func ErrorLogf(err error, format string, v ...interface{}) error {
 	if err != nil {
 		log.Printf("[x] %s "+format, err, v)
