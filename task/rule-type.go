@@ -14,6 +14,7 @@ type AuditTemplate map[string]AuditType
 type AuditType struct {
 	typeId    int
 	typeTitle string
+	auditSort int
 	auditMark string
 	//typeDesc  string
 	ruleList []AuditRule
@@ -48,7 +49,7 @@ func GetRuleItems() AuditTemplate {
 	defer dbMysql.Close()
 
 	//---------审核类型
-	sql := `select id, title,audit_mark from audit_template;`
+	sql := `select id, title, sort,audit_mark from audit_template;`
 	rows, err := dbMysql.Db.Query(sql)
 	if err != nil {
 		log.Fatal(err)
@@ -58,7 +59,7 @@ func GetRuleItems() AuditTemplate {
 	var typeIds []interface{}
 	for rows.Next() {
 		var at AuditType
-		rows.Scan(&at.typeId, &at.typeTitle, &at.auditMark)
+		rows.Scan(&at.typeId, &at.typeTitle, &at.auditSort, &at.auditMark)
 		aTypes = append(aTypes, at)
 		//审核ID
 		typeIds = append(typeIds, at.typeId)
@@ -143,7 +144,7 @@ func GetRuleItems() AuditTemplate {
 		}
 	}
 
-	//tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
+	tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
 
 	return hashAuditTemplate
 }

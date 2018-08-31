@@ -59,7 +59,7 @@ func (mq *MQ) Create(qn string) amqp.Queue {
 }
 
 //队列消费程序绑定
-func (mq *MQ) ConsumeBind(qn string, fn func([]byte), noAck bool, istest bool) {
+func (mq *MQ) ConsumeBind(qn string, fn func([]byte) bool, noAck bool) {
 	//consume resister
 	msgs, err := mq.ch.Consume(
 		qn,

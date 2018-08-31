@@ -45,14 +45,15 @@ func main() {
 		tool.PrettyPrint("message consume...")
 		tk := task.ConsumeTask{cfg, rabbit.MQ{}, amqp.Queue{}, mydb.DbMysql{}}
 		qn := q.Name
-		fn := tk.Work(qn, cmd.T)
 
-		//task consume init
-		tk.Start(qn, cmd.T)
+		//task boostrap
+		tk.Bootstrap(qn, cmd.T)
 		defer tk.Stop(qn, cmd.T)
 
-		//task go
-		mq.ConsumeBind(qn, fn, cmd.NoAck, cmd.T)
+		fn := tk.GetWork(qn, cmd.T)
+
+		//task consume bind
+		mq.ConsumeBind(qn, fn, cmd.NoAck)
 	}
 }
 
