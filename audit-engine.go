@@ -48,7 +48,7 @@ func main() {
 
 		//task boostrap
 		tk.Bootstrap(qn, cmd.T)
-		defer tk.Stop(qn, cmd.T)
+		//defer tk.Stop(qn, cmd.T)
 
 		fn := tk.GetWork(qn, cmd.T)
 

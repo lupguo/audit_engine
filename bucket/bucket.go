@@ -8,9 +8,8 @@ var MsgStat = status{
 	//申请人
 	"APPLY_CANCEL": 10,
 	//引擎审核
-	"EG_AUTO_PASS":    20,
-	"EG_AUTO_REJECT":  21,
-	"EG_DEFAULT_PASS": 22,
+	"EG_AUTO_PASS":   20,
+	"EG_AUTO_REJECT": 21,
 	//obs人工审核
 	"OBS_AUDITING":     30,
 	"OBS_AUDIT_PASS":   31,

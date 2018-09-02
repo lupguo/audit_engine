@@ -12,31 +12,30 @@ type AuditTemplate map[string]AuditType
 
 //规则类型
 type AuditType struct {
-	typeId    int
-	typeTitle string
-	auditSort int
-	auditMark string
-	//typeDesc  string
-	ruleList []AuditRule
+	TypeId    int
+	TypeTitle string
+	AuditSort int
+	AuditMark string
+	RuleList  []AuditRule
 }
 
 //规则条目
 type AuditRule struct {
-	ruleId    int
-	typeId    int
-	ruleRel   int //1与 2或
-	ruleProc  int //rule成立后的处理方式，1 系统通过，2 系统驳回，3 转人工审核
-	flowId    int
-	profit    float64
-	ruleItems []RuleItem
+	RuleId   int
+	TypeId   int
+	RuleRel  int //1与 2或
+	RuleProc int //rule成立后的处理方式，1 系统通过，2 系统驳回，3 转人工审核
+	FlowId   int
+	Profit   float64
+	ItemList []RuleItem
 }
 
 type RuleItem struct {
-	itemId      int
-	compareType int
-	field       string
-	operate     string
-	value       string
+	ItemId      int
+	CompareType int
+	Field       string
+	Operate     string
+	Value       string
 }
 
 //规则项(compare_type 1:阈值 2:字段）
@@ -59,10 +58,10 @@ func GetRuleItems() AuditTemplate {
 	var typeIds []interface{}
 	for rows.Next() {
 		var at AuditType
-		rows.Scan(&at.typeId, &at.typeTitle, &at.auditSort, &at.auditMark)
+		rows.Scan(&at.TypeId, &at.TypeTitle, &at.AuditSort, &at.AuditMark)
 		aTypes = append(aTypes, at)
 		//审核ID
-		typeIds = append(typeIds, at.typeId)
+		typeIds = append(typeIds, at.TypeId)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -88,13 +87,13 @@ func GetRuleItems() AuditTemplate {
 	var ar AuditRule
 	ruleGroups := make(map[int][]AuditRule, len(aTypes))
 	for rows.Next() {
-		rows.Scan(&ar.ruleId, &ar.typeId, &ar.ruleRel, &ar.ruleProc, &ar.flowId, &ar.profit)
+		rows.Scan(&ar.RuleId, &ar.TypeId, &ar.RuleRel, &ar.RuleProc, &ar.FlowId, &ar.Profit)
 		aRuls = append(aRuls, ar)
 		//规则条目 list
-		rids = append(rids, ar.ruleId)
+		rids = append(rids, ar.RuleId)
 
 		//分组
-		ruleGroups[ar.typeId] = append(ruleGroups[ar.typeId], ar)
+		ruleGroups[ar.TypeId] = append(ruleGroups[ar.TypeId], ar)
 	}
 	err = rows.Err()
 	if err != nil {
@@ -108,8 +107,8 @@ func GetRuleItems() AuditTemplate {
 	//分组+哈希表填充
 	hashAuditTemplate := make(AuditTemplate, 10)
 	for i, at := range aTypes {
-		aTypes[i].ruleList = ruleGroups[at.typeId]
-		hashAuditTemplate[at.auditMark] = aTypes[i]
+		aTypes[i].RuleList = ruleGroups[at.TypeId]
+		hashAuditTemplate[at.AuditMark] = aTypes[i]
 	}
 	//tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
 
@@ -130,17 +129,17 @@ func GetRuleItems() AuditTemplate {
 	itemGroups := make(map[int][]RuleItem, len(aRuls))
 	for rows.Next() {
 		var k RuleItem
-		rows.Scan(&k.itemId, &k.compareType, &k.field, &k.operate, &k.value)
+		rows.Scan(&k.ItemId, &k.CompareType, &k.Field, &k.Operate, &k.Value)
 		items = append(items, k)
 
-		itemGroups[k.itemId] = append(itemGroups[k.itemId], k)
+		itemGroups[k.ItemId] = append(itemGroups[k.ItemId], k)
 	}
 	//tool.PrettyPrint("itemGroups:\n", itemGroups)
 
 	//哈希表填充
 	for k, t := range hashAuditTemplate {
-		for kk, r := range t.ruleList {
-			hashAuditTemplate[k].ruleList[kk].ruleItems = itemGroups[r.ruleId]
+		for kk, r := range t.RuleList {
+			hashAuditTemplate[k].RuleList[kk].ItemList = itemGroups[r.RuleId]
 		}
 	}
 

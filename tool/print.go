@@ -1,27 +1,26 @@
 package tool
 
 import (
-	"fmt"
 	"log"
 )
 
 //error log
 func ErrorLog(err error, msg string) error {
 	if err != nil {
-		fmt.Printf("[x] %s: %s", err, msg)
+		log.Printf("[x] %s: %s", err, msg)
 	}
 	return err
 }
 
 //error log
 func ErrorLogP(msg string) {
-	fmt.Println("[x]", msg)
+	log.Println("[x]", msg)
 }
 
 //error log
 func ErrorLogf(err error, format string, v ...interface{}) error {
 	if err != nil {
-		fmt.Printf("[x] %s "+format, err, v)
+		log.Printf("[x] %s "+format, err, v)
 	}
 	return err
 }
@@ -35,9 +34,9 @@ func ErrorPanic(err error, msg string) {
 
 //pretty log
 func PrettyPrint(v ...interface{}) {
-	fmt.Printf("[*] %+v", v)
+	log.Printf("[*] %+v", v)
 }
 
 func PrettyPrintf(format string, v ...interface{}) {
-	fmt.Printf("[*] "+format, v)
+	log.Printf("[*] "+format, v...)
 }

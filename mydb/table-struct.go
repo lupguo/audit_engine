@@ -16,13 +16,3 @@ type Rule struct {
 //规则项
 type RuleItem struct {
 }
-
-//审核类型模板
-func GetRuleTypes() {
-
-}
-
-//审核规则(1:通过2:驳回3:人工审核)
-func GetRules() {
-
-}

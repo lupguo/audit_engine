@@ -41,13 +41,16 @@ func (tk *ConsumeTask) Bootstrap(qn string, test bool) {
 	}
 }
 
-//停止则回收相关信息
+//停止则回收相关资源
 func (tk *ConsumeTask) Stop(qn string, test bool) {
 	tool.PrettyPrint(fmt.Sprintf("consume %s task stop, do environment clean...", qn))
 
 	switch m := config.QueName; qn {
+	case m["OBS_RULE_CHANGE_MSG"]:
+	case m["SOA_AUDIT_MSG"]:
 	case m["OBS_PERSON_AUDIT_RESULT"]:
 		tk.TkMq.Close()
+		//tk.TkDb.Close()
 	}
 }
 
@@ -81,43 +84,45 @@ func (tk *ConsumeTask) workPrintMessage(msg []byte) bool {
 func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 	fmt.Println("Audit Message Task...")
 	//获取规则
-	var s rabbit.AuditMsg
-	err := json.Unmarshal(msg, &s)
+	var am rabbit.AuditMsg
+	err := json.Unmarshal(msg, &am)
 	if err != nil {
 		tool.ErrorLog(err, "unmarshal audit message fail")
 		return false
 	}
 
-	var t rabbit.BusinessData
-	err = json.Unmarshal([]byte(s.BussData), &t)
+	var bd rabbit.BusinessData
+	err = json.Unmarshal([]byte(am.BussData), &bd)
 	if err != nil {
 		tool.ErrorLog(err, "unmarshal business data fail")
 		return false
 	}
 
-	tool.PrettyPrint("AuditMsg:", s)
-	tool.PrettyPrint("BussData:", t)
+	tool.PrettyPrint("AuditMsg:", am)
+	tool.PrettyPrint("BussData:", bd)
 
 	//hash map 规则
 	hashRuleTypes := GetRuleItems()
-	at, ok := hashRuleTypes[s.AuditMark]
+	at, ok := hashRuleTypes[am.AuditMark]
 	if !ok {
-		fmt.Println(s.AuditMark, "hash key not exist")
+		fmt.Println(am.AuditMark, "hash key not exist")
 		return false
 	}
 	tool.PrettyPrintf("%+v", at)
 
 	//规则校验(rt)
+	rm := RunRuleMatch(&bd, &at)
+	fmt.Println("rmmmmm:", rm)
 
 	//自动通过|驳回|转人工审核（写db)
-	tk.insertAuditMsg(s, t, at)
+	tk.insertAuditMsg(am, bd, at, rm)
 
 	log.Println("Done")
 
 	return true
 }
 
-func (tk *ConsumeTask) insertAuditMsg(ad rabbit.AuditMsg, bd rabbit.BusinessData, at AuditType) {
+func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData, at AuditType, rm int) {
 	db := tk.TkDb.Db
 
 	//sql
@@ -136,20 +141,20 @@ func (tk *ConsumeTask) insertAuditMsg(ad rabbit.AuditMsg, bd rabbit.BusinessData
 	defer stmt.Close()
 
 	//检测审核规则是否为空
-	if len(at.ruleList) == 0 {
+	if len(at.RuleList) == 0 {
 		tool.ErrorLogP("audit type rule list is empty")
 		return
 	}
 	result, err := stmt.Exec(
-		ad.SiteCode,
-		at.typeId,
-		at.auditSort,
-		at.auditMark,
-		at.typeTitle,
-		ad.BussUuid,
-		ad.BussData,
-		ad.CreateUser,
-		at.ruleList[0].flowId,
+		am.SiteCode,
+		at.TypeId,
+		at.AuditSort,
+		at.AuditMark,
+		at.TypeTitle,
+		am.BussUuid,
+		am.BussData,
+		am.CreateUser,
+		at.RuleList[0].FlowId,
 		"30",
 		time.Now().Unix(),
 	)

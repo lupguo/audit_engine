@@ -32,6 +32,7 @@ type AuditMsg struct {
 
 //价格审核业务数据结构
 type BusinessData struct {
+	CalculatePrice float64 //计算结果价格
 	ChargePrice    float64 //计费价格
 	PriceLoss      float64 //亏损金额，SOA无此数据，需审核中心计算
 	CatId          int     //分类ID
@@ -39,7 +40,6 @@ type BusinessData struct {
 	PipelineCode   string  //网站渠道
 	GoodSn         string  //SKU
 	SysLabelId     int     //价格系统标签（价格类型）
-	CalculatePrice float64 //计算结果价格
 	Rate           float64 //利润率
 	ChangeType     int     //价格变更类型：1：人工 2：系统
 }
