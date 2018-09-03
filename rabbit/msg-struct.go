@@ -50,6 +50,6 @@ type BusinessData struct {
 
 //人工审核通过数据结构 //{"message_id":"1","status":"2"}
 type PersonAuditResult struct {
-	MsgId  int `json:"message_id"`
+	MsgId  int64 `json:"message_id"`
 	Status int
 }

@@ -14,69 +14,52 @@ import (
 )
 
 type ConsumeTask struct {
-	TkCfg config.CFG
-	TkMq  rabbit.MQ
-	Que   amqp.Queue
-	TkDb  mydb.DbMysql
+	TkCfg   config.CFG
+	MqGbVh  rabbit.MQ //gb vhost
+	MqSoaVh rabbit.MQ //soa vhost
+	Que     amqp.Queue
+	TkDb    mydb.DbMysql
 }
 
 //初始化队列任务环境
-func (tk *ConsumeTask) Bootstrap(qn string, test bool) {
-	tool.PrettyPrint(fmt.Sprintf("consume %s task start, do environment init...", qn))
+func (tk *ConsumeTask) Bootstrap() {
+	tool.PrettyPrint("Task Bootstrap...")
 
-	switch m := config.QueName; qn {
-	case m["OBS_RULE_CHANGE_MSG"]:
-	case m["SOA_AUDIT_MSG"]:
-		//初始化一个db连接
-		tk.TkDb.Connect(config.GlobaleCFG.Mysql)
-	case m["OBS_PERSON_AUDIT_RESULT"]:
-		//初始化一个rabbit连接
-		cfg := tk.TkCfg
-		//rabbitmq init conn & channel
-		tk.TkMq.Init(cfg.RabbitMq["gb"])
-		//create mq
-		tk.Que = tk.TkMq.Create(m["SOA_AUDIT_BACK_MSG"])
-		//初始化一个db连接
-		tk.TkDb.Connect(config.GlobaleCFG.Mysql)
-	}
+	//初始化一个rabbit连接
+	cfg := tk.TkCfg
+	tk.MqSoaVh.Init(cfg.RabbitMq["soa"])
+	tk.MqGbVh.Init(cfg.RabbitMq["gb"])
+
+	//初始化一个db连接
+	tk.TkDb.Connect(config.GlobaleCFG.Mysql)
 }
 
 //停止则回收相关资源
-func (tk *ConsumeTask) Stop(qn string, test bool) {
-	tool.PrettyPrint(fmt.Sprintf("consume %s task stop, do environment clean...", qn))
+func (tk *ConsumeTask) Stop() {
+	tool.PrettyPrint("Task Clean...")
 
-	switch m := config.QueName; qn {
-	case m["OBS_RULE_CHANGE_MSG"]:
-	case m["SOA_AUDIT_MSG"]:
-	case m["OBS_PERSON_AUDIT_RESULT"]:
-		tk.TkMq.Close()
-		//tk.TkDb.Close()
-	}
+	tk.MqGbVh.Close()
+	tk.TkDb.Close()
 }
 
 //基于queue队列名分配工作任务
 func (tk *ConsumeTask) GetWork(qn string, test bool) (workFn func([]byte) bool) {
-
-	if test { //test just print message
-		return tk.workPrintMessage
-	}
-
-	//常规工作队列
-	switch m := config.QueName; qn {
-	case m["SOA_AUDIT_MSG"]:
+	switch {
+	case test:
+		workFn = tk.workPrintMessage
+	case qn == config.QueName["SOA_AUDIT_MSG"]:
 		workFn = tk.workAuditMessage
-	case m["OBS_PERSON_AUDIT_RESULT"]:
+	case qn == config.QueName["OBS_PERSON_AUDIT_RESULT"]:
 		workFn = tk.workUpdateAuditResult
 	}
 	return workFn
 }
 
-//打印 message
+//测试仅做打印 message操作
 func (tk *ConsumeTask) workPrintMessage(msg []byte) bool {
 	log.Println("Working...")
 	//tool.PrettyPrint(string(data))
 	log.Println("Done")
-
 	return true
 }
 
@@ -111,18 +94,19 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 	tool.PrettyPrintf("%+v", at)
 
 	//规则校验(rt)
-	rm := RunRuleMatch(&bd, &at)
-	fmt.Println("rmmmmm:", rm)
+	mr := RunRuleMatch(&bd, &at)
+	fmt.Println("RunRuleMatch----->:", mr)
 
 	//自动通过|驳回|转人工审核（写db)
-	tk.insertAuditMsg(am, bd, at, rm)
+	tk.insertAuditMsg(am, bd, &at, mr)
 
-	log.Println("Done")
-
+	tool.PrettyPrint("Audit Message Task Done !!")
 	return true
 }
 
-func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData, at AuditType, rm int) {
+//审核消息入库
+func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData, at *AuditType, mr int) {
+
 	db := tk.TkDb.Db
 
 	//sql
@@ -141,10 +125,12 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 	defer stmt.Close()
 
 	//检测审核规则是否为空
-	if len(at.RuleList) == 0 {
-		tool.ErrorLogP("audit type rule list is empty")
-		return
+	flowId := 0
+	if len(at.RuleList) > 0 {
+		tool.ErrorLogP("Audit rule list is empty")
+		flowId = at.RuleList[0].FlowId
 	}
+
 	result, err := stmt.Exec(
 		am.SiteCode,
 		at.TypeId,
@@ -154,8 +140,8 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 		am.BussUuid,
 		am.BussData,
 		am.CreateUser,
-		at.RuleList[0].FlowId,
-		"30",
+		flowId,
+		mr,
 		time.Now().Unix(),
 	)
 	if err != nil {
@@ -164,14 +150,13 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 	}
 	lastId, err := result.LastInsertId()
 	tool.PrettyPrintf("Success insert id: %d", lastId)
-}
 
-////拉取配置任务
-//func (tk *ConsumeTask) workUpdateRule(msg []byte) {
-//	tool.PrettyPrint("Update Rule Task...")
-//	GetRuleItems()
-//	tool.PrettyPrint("Done")
-//}
+	//自动通过或拒绝，发布消息
+	if engineReturn := mr != AuditStatus[ObsAudit]; engineReturn {
+		tk.sendBackMsg(lastId, engineReturn)
+	}
+
+}
 
 //同步审核结果任务
 func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
@@ -196,64 +181,88 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	}
 
 	//人工审核状态转换
-	rst, err := stmt.Exec(bucket.AudStat[par.Status], par.MsgId)
+	adStat := bucket.ObsAudStat[par.Status]
+	rst, err := stmt.Exec(adStat, par.MsgId)
 	if err != nil {
-		tool.PrettyPrint(err)
+		tool.ErrorLog(err, "upd audit status exec fail(stmt.exec)")
 		return false
 	}
 	stmt.Close()
+
 	rn, err := rst.RowsAffected()
-	if err != nil {
-		tool.PrettyPrint(err)
+	if err != nil || rn == 0 {
+		tool.ErrorLog(err, "upd audit status fail(update none row)")
 		return false
 	}
 	tool.PrettyPrintf("Success update rows: %d", rn)
 
+	//send msg to soa
+	tk.sendBackMsg(par.MsgId, false)
+
+	tool.PrettyPrint("Done")
+	return true
+}
+
+func (tk *ConsumeTask) sendBackMsg(msgId int64, engineReturn bool) {
+	db := tk.TkDb.Db
+
 	//select info & return to soa_back_msg
-	sql = `
+	sql := ""
+	if engineReturn {
+		sql = fmt.Sprintf(`
 SELECT
-  site_code,
-  business_uuid,
-  audit_mark,
-  audit_status,
+  m.site_code,
+  m.business_uuid,
+  m.audit_mark,
+  m.audit_status,
+	"%s" as audit_explain,
+	%d as user_id,
+	%d as create_time
+FROM audit_message as m
+WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`,
+			"系统自动审核",
+			0,
+			time.Now().Unix(),
+		)
+	} else {
+		sql = `
+SELECT
+  m.site_code,
+  m.business_uuid,
+  m.audit_mark,
+  m.audit_status,
   mr.audit_explain,
   mr.user_id,
-  mr.status,
   mr.create_time
 FROM audit_record  AS mr LEFT JOIN audit_message as m USING(message_id)
 WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
-	rows := db.QueryRow(sql, par.MsgId)
-	if err != nil {
-		tool.PrettyPrint(err)
-		return false
 	}
+
+	rows := db.QueryRow(sql, msgId)
+	fmt.Println(sql, msgId)
+
 	var bk rabbit.AuditBackMsg
-	rows.Scan(
+	err := rows.Scan(
 		&bk.SiteCode,
 		&bk.BussUuid,
 		&bk.AuditMark,
 		&bk.AuditStatus,
 		&bk.AuditRemark,
 		&bk.AuditUid,
-		nil,
 		&bk.AuditTime,
 	)
-	tool.PrettyPrintf("%+v", bk)
+	if err != nil {
+		tool.ErrorLog(err, "rows scan fail")
+		return
+	}
+	bk.AuditStatus = bucket.SoaAudStat[bk.AuditStatus]
+	tool.PrettyPrintf("audit back msg : %+v", bk)
 	b, err := json.Marshal(bk)
 	if err != nil {
 		tool.ErrorLog(err, "marshal result msg data fail")
-		return false
+		return
 	}
 
 	//msg return
-	tk.backMsg(config.QueName["SOA_AUDIT_BACK_MSG"], b)
-
-	tool.PrettyPrint("Done")
-	return true
-}
-
-// 响应审核结果消息给到SOA
-func (tk *ConsumeTask) backMsg(qn string, msg []byte) {
-	//send msg
-	tk.TkMq.Publish(tk.Que.Name, msg, 1)
+	tk.MqGbVh.Publish(config.QueName["SOA_AUDIT_BACK_MSG"], b, 1)
 }

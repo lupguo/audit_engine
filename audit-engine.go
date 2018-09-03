@@ -2,26 +2,22 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/streadway/amqp"
 	"github.com/tkstorm/audit_engine/config"
-	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/task"
 	"github.com/tkstorm/audit_engine/tool"
 )
 
 var (
-	cmd  config.CmdArgs
-	cfg  config.CFG
-	mq   rabbit.MQ
-	rbmq rabbit.Config
+	cmd config.CmdArgs
+	cfg config.CFG
+	tk  task.ConsumeTask
 )
 
 func main() {
 	//cmd args parse from cmdline
 	cmd.Parse()
 
-	//config init from cmdline args
 	cfg.InitByCmd(cmd)
 
 	//show message
@@ -29,44 +25,35 @@ func main() {
 		return
 	}
 
-	//rabbitmq init conn & channel
-	mq.Init(selectCfg(cmd.QName))
-	defer mq.Close()
+	//任务初始化
+	tk = task.ConsumeTask{TkCfg: cfg}
+	tk.Bootstrap()
+	defer tk.Stop()
 
 	//create mq
+	mq := getMqByQueName(cmd.QName)
 	q := mq.Create(cmd.QName)
 	tool.PrettyPrint("deal with queue:", q.Name)
 
-	//publish or consume
-	if cmd.Pub {
-		tool.PrettyPrint("message publish...")
+	switch {
+	case cmd.Pub:
+		tool.PrettyPrint("Message cmdline publish...")
 		mq.Publish(q.Name, msgData(q.Name), cmd.RepNumber)
-	} else {
-		tool.PrettyPrint("message consume...")
-		tk := task.ConsumeTask{cfg, rabbit.MQ{}, amqp.Queue{}, mydb.DbMysql{}}
-		qn := q.Name
-
-		//task boostrap
-		tk.Bootstrap(qn, cmd.T)
-		//defer tk.Stop(qn, cmd.T)
-
-		fn := tk.GetWork(qn, cmd.T)
-
-		//task consume bind
-		mq.ConsumeBind(qn, fn, cmd.NoAck)
+	case cmd.Cus:
+		tool.PrettyPrint("Message cmdline consume...")
+		mq.ConsumeBind(q.Name, tk.GetWork(q.Name, cmd.T), cmd.NoAck)
+	default:
+		tool.ErrorLogP("Must be task consume or publish")
 	}
 }
 
-func selectCfg(qn string) rabbit.Config {
-	switch qn {
-	case config.QueName["SOA_AUDIT_MSG"]:
-		return cfg.RabbitMq["soa"]
-	case config.QueName["SOA_AUDIT_BACK_MSG"]:
-	case config.QueName["OBS_RULE_CHANGE_MSG"]:
-	case config.QueName["OBS_PERSON_AUDIT_RESULT"]:
-		return cfg.RabbitMq["gb"]
+func getMqByQueName(qn string) rabbit.MQ {
+	switch {
+	case qn == config.QueName["SOA_AUDIT_MSG"]:
+		return tk.MqSoaVh
+	default:
+		return tk.MqGbVh
 	}
-	return cfg.RabbitMq["gb"]
 }
 
 // select queue and prepare message data
