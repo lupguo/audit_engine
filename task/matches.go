@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	"github.com/tkstorm/audit_engine/rabbit"
+	"github.com/tkstorm/audit_engine/tool"
 	"strings"
 )
 
@@ -18,10 +19,10 @@ const (
 )
 
 const (
-	SysPass    = 1
-	SysReject  = 2
-	ObsAudit   = 3
-	SysDefPass = 4
+	SysPass    = 1 //系统匹配通过
+	SysReject  = 2 //系统拒绝
+	ObsAudit   = 3 //obs审核
+	SysDefPass = 4 //系统未匹配通过
 )
 
 var AuditStatus = map[int]int{
@@ -34,6 +35,7 @@ var AuditStatus = map[int]int{
 //规则匹配结果
 type RuleMatch struct {
 	RuleId      int
+	FlowId      int
 	RuleGo      int
 	RMatch      bool
 	Explain     string
@@ -106,7 +108,8 @@ func valueCompare(field string, operate string, value string) bool {
 }
 
 //rule多条规则比较
-func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) int {
+//返回结果: r 1 系统通过，2 系统驳回，3 转人工审核
+func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, RuleMatch) {
 
 	var rml []RuleMatch
 	lenRule := len(auditType.RuleList)
@@ -150,20 +153,22 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) int {
 		rml = append(rml, RuleMatch{
 			RMatch:      result == RuleMatched,
 			RuleId:      rule.RuleId,
+			FlowId:      rule.FlowId,
 			RuleGo:      rule.RuleProc,
 			Explain:     fmt.Sprintf("rule items rel %d (1:and 2:or)", rule.RuleRel),
 			ItemMatches: iml,
 		})
 
-		fmt.Printf("%#v", rml)
+		tool.PrettyPrintf("%#v", rml[len(rml)-1])
 
-		if result == RuleMatched { //1 系统通过，2 系统驳回，3 转人工审核，任一条rule通过，则进入下一步
-			return AuditStatus[rule.RuleProc]
+		if result == RuleMatched { //任一条rule通过，则进入下一步
+			//1 系统通过，2 系统驳回，3 转人工审核，
+			return AuditStatus[rule.RuleProc], rml[len(rml)-1]
 		} else if i < lenRule-2 {
 			continue
 		}
 	}
 
 	//如果都不匹配，默认规则放行
-	return AuditStatus[SysDefPass]
+	return AuditStatus[SysDefPass], RuleMatch{RuleId: 0, FlowId: 0}
 }

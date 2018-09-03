@@ -94,29 +94,33 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 	tool.PrettyPrintf("%+v", at)
 
 	//规则校验(rt)
-	mr := RunRuleMatch(&bd, &at)
-	fmt.Println("RunRuleMatch----->:", mr)
+	matchAction, mrm := RunRuleMatch(&bd, &at)
+	fmt.Println("RunRuleMatch----->:", matchAction)
 
 	//自动通过|驳回|转人工审核（写db)
-	tk.insertAuditMsg(am, bd, &at, mr)
+	tk.insertAuditMsg(am, bd, &at, matchAction, mrm)
 
 	tool.PrettyPrint("Audit Message Task Done !!")
 	return true
 }
 
 //审核消息入库
-func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData, at *AuditType, mr int) {
-
+func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData, at *AuditType, matchAction int, mrm RuleMatch) {
 	db := tk.TkDb.Db
+
+	//检测审核规则是否为空
+	if len(at.RuleList) == 0 {
+		tool.ErrorLogP("Audit rule list is empty")
+	}
 
 	//sql
 	sql := "INSERT INTO audit_message (" +
-		"site_code,template_id, audit_sort, audit_mark, audit_name," +
+		"site_code, rule_id,template_id, audit_sort, audit_mark, audit_name," +
 		"business_uuid, business_data, " +
-		"create_user,workflow_id,audit_status, " +
+		"create_user,workflow_id,audit_status, module, " +
 		"create_time" +
 		")" +
-		"VALUES(?,?,?,?,?,?,?,?,?,?,?);"
+		"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);"
 	stmt, err := db.Prepare(sql)
 	if err != nil {
 		tool.ErrorLog(err, "insert into audit_message Prepare fail")
@@ -124,15 +128,9 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 	}
 	defer stmt.Close()
 
-	//检测审核规则是否为空
-	flowId := 0
-	if len(at.RuleList) > 0 {
-		tool.ErrorLogP("Audit rule list is empty")
-		flowId = at.RuleList[0].FlowId
-	}
-
 	result, err := stmt.Exec(
 		am.SiteCode,
+		mrm.RuleId,
 		at.TypeId,
 		at.AuditSort,
 		at.AuditMark,
@@ -140,8 +138,9 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 		am.BussUuid,
 		am.BussData,
 		am.CreateUser,
-		flowId,
-		mr,
+		mrm.FlowId,
+		matchAction,
+		am.Module,
 		time.Now().Unix(),
 	)
 	if err != nil {
@@ -152,7 +151,7 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 	tool.PrettyPrintf("Success insert id: %d", lastId)
 
 	//自动通过或拒绝，发布消息
-	if engineReturn := mr != AuditStatus[ObsAudit]; engineReturn {
+	if engineReturn := matchAction != AuditStatus[ObsAudit]; engineReturn {
 		tk.sendBackMsg(lastId, engineReturn)
 	}
 
@@ -217,11 +216,13 @@ SELECT
   m.audit_status,
 	"%s" as audit_explain,
 	%d as user_id,
+	"%s" as username,
 	%d as create_time
 FROM audit_message as m
 WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`,
 			"系统自动审核",
 			0,
+			"系统",
 			time.Now().Unix(),
 		)
 	} else {
@@ -233,13 +234,14 @@ SELECT
   m.audit_status,
   mr.audit_explain,
   mr.user_id,
+  mr.username,
   mr.create_time
 FROM audit_record  AS mr LEFT JOIN audit_message as m USING(message_id)
 WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
 	}
 
 	rows := db.QueryRow(sql, msgId)
-	fmt.Println(sql, msgId)
+	//fmt.Println(sql, msgId)
 
 	var bk rabbit.AuditBackMsg
 	err := rows.Scan(
@@ -249,6 +251,7 @@ WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
 		&bk.AuditStatus,
 		&bk.AuditRemark,
 		&bk.AuditUid,
+		&bk.AuditUser,
 		&bk.AuditTime,
 	)
 	if err != nil {
