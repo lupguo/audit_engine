@@ -10,10 +10,3 @@ var QueName = rabbit.QueueName{
 	"OBS_RULE_CHANGE_MSG":     "obsRuleChange_OBS",
 	"OBS_PERSON_AUDIT_RESULT": "obsAuditResult_OBS",
 }
-
-var AvailQueNames = []string{
-	"auditMessage_OBS",
-	"auditResult_SOA_GOODS",
-	"obsRuleChange_OBS",
-	"obsAuditResult_OBS",
-}

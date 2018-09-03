@@ -7,6 +7,7 @@ import (
 	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/tool"
+	"os"
 )
 
 type EngineInfo struct {
@@ -35,7 +36,8 @@ func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 	//read config file
 	viper.SetConfigFile(cmd.Cfg)
 	if err := viper.ReadInConfig(); err != nil {
-		tool.ErrorPanic(err, "viper read config error")
+		tool.ErrorLog(err, "viper read config error")
+		os.Exit(-1)
 	}
 
 	//test

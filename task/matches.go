@@ -94,8 +94,9 @@ func valueCompare(field string, operate string, value string) bool {
 		ss := strings.Split(value, "-")
 		if len(ss) > 1 {
 			rs = field >= ss[0] && field <= ss[1]
+		} else {
+			rs = field >= ss[0]
 		}
-		rs = field >= ss[0]
 	case "in":
 		rs = strings.Contains(value, field)
 	case "not in":
@@ -124,7 +125,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 			im := ItemMatch{
 				ItemId:  item.ItemId,
 				IMatch:  match,
-				Explain: fmt.Sprintf("(bussData.%v) %v %v %v", item.Field, field, item.Operate, item.Value),
+				Explain: fmt.Sprintf("(bussData.%v) [%v] [%v] [%v]", item.Field, field, item.Operate, item.Value),
 			}
 			iml = append(iml, im)
 		}
