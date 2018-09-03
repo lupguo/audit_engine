@@ -72,6 +72,10 @@ func (mq *MQ) ConsumeBind(qn string, fn func([]byte) bool, noAck bool) {
 	)
 	tool.ErrorLog(err, "Failed to register a consumer")
 
+	//set qos
+	err = mq.ch.Qos(150, 0, false)
+	tool.ErrorLog(err, "Failed to set channel qos")
+
 	//consume work
 	forever := make(chan bool)
 	go func() {
