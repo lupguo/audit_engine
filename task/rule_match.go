@@ -3,9 +3,7 @@ package task
 import (
 	"fmt"
 	"github.com/tkstorm/audit_engine/rabbit"
-	"github.com/tkstorm/audit_engine/tool"
-	"strconv"
-	"strings"
+	"log"
 )
 
 const (
@@ -50,14 +48,7 @@ type ItemMatch struct {
 	Explain string
 }
 
-//规则项结果设置
-func (mr *ItemMatch) set(ruleId int, match bool, explain string) {
-	mr.ItemId = ruleId
-	mr.IMatch = match
-	mr.Explain = explain
-}
-
-//bussdata 转成对应项的string值
+//bussData 转成对应项的string值
 func bussDataToString(field string, bussData *rabbit.BusinessData) string {
 	switch field {
 	case "catId":
@@ -75,60 +66,6 @@ func bussDataToString(field string, bussData *rabbit.BusinessData) string {
 	return ""
 }
 
-//rule item比较，返回指定item是否满足条件
-func valueCompare(field string, operate string, value string) bool {
-
-	var fieldF, valueF float64
-
-	//输入数据转float64
-	switch operate {
-	case ">":
-	case ">=":
-	case "<":
-	case "<=":
-	case "<>":
-	case "==":
-		fieldF, _ = strconv.ParseFloat(field, 64)
-		valueF, _ = strconv.ParseFloat(value, 64)
-	case "between":
-		fieldF, _ = strconv.ParseFloat(field, 64)
-	}
-
-	//数据对比
-	var rs bool
-	switch operate {
-	case ">":
-		rs = fieldF > valueF
-	case ">=":
-		rs = fieldF >= valueF
-	case "<":
-		rs = fieldF < valueF
-	case "<=":
-		rs = fieldF <= valueF
-	case "<>":
-		rs = fieldF != valueF
-	case "==":
-		rs = fieldF == valueF
-	case "between": //1-5
-		ss := strings.Split(value, "-")
-		min, _ := strconv.ParseFloat(ss[0], 64)
-		if len(ss) > 1 {
-			max, _ := strconv.ParseFloat(ss[1], 64)
-			rs = fieldF >= min && fieldF <= max
-		} else {
-			rs = fieldF >= min
-		}
-	case "in":
-		rs = strings.Contains(value, field)
-	case "not in":
-		rs = !strings.Contains(value, field)
-	default:
-		rs = false
-	}
-
-	return rs
-}
-
 //rule多条规则比较
 //返回结果: r 1 系统通过，2 系统驳回，3 转人工审核
 func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, RuleMatch) {
@@ -142,7 +79,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 
 		for _, item := range rule.ItemList {
 			field := bussDataToString(item.Field, bussData)
-			match := valueCompare(field, item.Operate, item.Value)
+			match := ValueCompare(field, item.Operate, item.Value)
 			im := ItemMatch{
 				ItemId:  item.ItemId,
 				IMatch:  match,
@@ -181,7 +118,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 			ItemMatches: iml,
 		})
 
-		tool.PrettyPrintf("%#v", rml[len(rml)-1])
+		log.Printf("%+v", rml[len(rml)-1])
 
 		if result == RuleMatched { //任一条rule通过，则进入下一步
 			//1 系统通过，2 系统驳回，3 转人工审核，

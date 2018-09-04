@@ -3,7 +3,6 @@ package task
 import (
 	"github.com/tkstorm/audit_engine/config"
 	"github.com/tkstorm/audit_engine/mydb"
-	"github.com/tkstorm/audit_engine/tool"
 	"log"
 )
 
@@ -40,7 +39,7 @@ type RuleItem struct {
 
 //规则项(compare_type 1:阈值 2:字段）
 func GetRuleItems() AuditTemplate {
-	tool.PrettyPrint(config.GlobaleCFG)
+	log.Println(config.GlobaleCFG)
 
 	var dbMysql mydb.DbMysql
 	dbcf := config.GlobaleCFG.Mysql
@@ -67,7 +66,7 @@ func GetRuleItems() AuditTemplate {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//tool.PrettyPrint("aTypes:\n", aTypes)
+	//log.Println("aTypes:\n", aTypes)
 	rows.Close()
 
 	//----------规则条目
@@ -99,8 +98,8 @@ func GetRuleItems() AuditTemplate {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//tool.PrettyPrint("aRuls:\n", aRuls)
-	//tool.PrettyPrint("ruleGroups:\n", ruleGroups)
+	//log.Println("aRuls:\n", aRuls)
+	//log.Println("ruleGroups:\n", ruleGroups)
 	rows.Close()
 	stmt.Close()
 
@@ -110,7 +109,7 @@ func GetRuleItems() AuditTemplate {
 		aTypes[i].RuleList = ruleGroups[at.TypeId]
 		hashAuditTemplate[at.AuditMark] = aTypes[i]
 	}
-	//tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
+	//log.Println("hashAuditTemplate:\n", hashAuditTemplate)
 
 	//--------比较项
 	sql = "select rule_id,compare_type,field,operation,value from audit_rule_item WHERE rule_id IN (" + mydb.Concat(rids) + ")"
@@ -134,7 +133,7 @@ func GetRuleItems() AuditTemplate {
 
 		itemGroups[k.ItemId] = append(itemGroups[k.ItemId], k)
 	}
-	//tool.PrettyPrint("itemGroups:\n", itemGroups)
+	//log.Println("itemGroups:\n", itemGroups)
 
 	//哈希表填充
 	for k, t := range hashAuditTemplate {
@@ -143,7 +142,7 @@ func GetRuleItems() AuditTemplate {
 		}
 	}
 
-	tool.PrettyPrint("hashAuditTemplate:\n", hashAuditTemplate)
+	log.Println("hashAuditTemplate:", hashAuditTemplate)
 
 	return hashAuditTemplate
 }

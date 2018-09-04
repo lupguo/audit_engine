@@ -7,7 +7,7 @@ import (
 	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/tool"
-	"os"
+	"log"
 )
 
 type EngineInfo struct {
@@ -35,10 +35,8 @@ func (cfg *CFG) GetVersion(egi EngineInfo) string {
 func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 	//read config file
 	viper.SetConfigFile(cmd.Cfg)
-	if err := viper.ReadInConfig(); err != nil {
-		tool.ErrorLog(err, "viper read config error")
-		os.Exit(-1)
-	}
+	err := viper.ReadInConfig()
+	tool.FatalLog(err, "viper read config error")
 
 	//test
 	cfg.cmd = cmd
@@ -93,16 +91,16 @@ func (cfg *CFG) ShowInfo(cmd CmdArgs) (out bool) {
 
 func (cfg *CFG) PrintEnv() {
 	//print config
-	tool.PrettyPrint(cfg.GetVersion(cfg.EInfo))
-	tool.PrettyPrint("config_file:", cfg.ConfigFile)
-	tool.PrettyPrint("testing:", cfg.Test)
+	log.Println(cfg.GetVersion(cfg.EInfo))
+	log.Println("config_file:", cfg.ConfigFile)
+	log.Println("testing:", cfg.Test)
 
 	//cmd print
-	tool.PrettyPrint("cmd input", fmt.Sprintf("%+v", cfg.cmd))
+	log.Println("cmd input", fmt.Sprintf("%+v", cfg.cmd))
 }
 
 func (cfg *CFG) PrintVersion() {
-	tool.PrettyPrint(cfg.GetVersion(cfg.EInfo))
+	log.Println(cfg.GetVersion(cfg.EInfo))
 }
 
 func (cfg *CFG) PrintHelpInfo() {

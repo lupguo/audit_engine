@@ -30,13 +30,13 @@ func (mq *MQ) Init(mqcf Config) {
 	var err error
 	//conn
 	url := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", mqcf.User, mqcf.Pass, mqcf.Host, mqcf.Port, mqcf.Vhost)
-	tool.PrettyPrint(url)
+	log.Println(url)
 	mq.conn, err = amqp.Dial(url)
-	tool.ErrorPanic(err, "Failed to connect to RabbitMQ")
+	tool.FatalLog(err, "failed to connect to RabbitMQ")
 
 	//channel
 	mq.ch, err = mq.conn.Channel()
-	tool.ErrorPanic(err, "Failed to open a channel")
+	tool.FatalLog(err, "failed to open a channel")
 }
 
 //队列创建
@@ -54,7 +54,7 @@ func (mq *MQ) Create(qn string) amqp.Queue {
 		false,
 		nil,
 	)
-	tool.ErrorPanic(err, "Failed to declare queue")
+	tool.FatalLog(err, "failed to declare queue")
 	return q
 }
 
@@ -70,24 +70,24 @@ func (mq *MQ) ConsumeBind(qn string, fn func([]byte) bool, noAck bool) {
 		false,
 		nil,
 	)
-	tool.ErrorLog(err, "Failed to register a consumer")
+	tool.FatalLog(err, "failed to register a consumer")
 
 	//set qos
 	err = mq.ch.Qos(150, 0, false)
-	tool.ErrorLog(err, "Failed to set channel qos")
+	tool.FatalLog(err, "failed to set channel qos")
 
 	//consume work
 	forever := make(chan bool)
 	go func() {
 		for d := range msgs {
-			tool.PrettyPrintf("Received a message: %s", d.Body)
+			log.Printf("received a message: %+v", d.Body)
 			fn(d.Body)
 			if !noAck {
 				d.Ack(false)
 			}
 		}
 	}()
-	log.Printf("[*] Waiting for message. To exit press CTRL+C")
+	log.Println("[*] waiting for message. To exit press CTRL+C")
 	<-forever
 }
 
@@ -101,7 +101,7 @@ func (mq *MQ) Publish(qn string, data []byte, n int) {
 
 	for i := 0; i < n; i++ {
 		err := mq.ch.Publish("", qn, false, false, msg)
-		tool.ErrorLog(err, "Failed to publish a message")
-		tool.PrettyPrint("Send message finish")
+		tool.FatalLog(err, "failed to publish a message")
+		log.Println("send message finish")
 	}
 }

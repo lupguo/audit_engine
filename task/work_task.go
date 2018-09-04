@@ -8,7 +8,6 @@ import (
 	"github.com/tkstorm/audit_engine/config"
 	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
-	"github.com/tkstorm/audit_engine/tool"
 	"log"
 	"time"
 )
@@ -23,7 +22,7 @@ type ConsumeTask struct {
 
 //初始化队列任务环境
 func (tk *ConsumeTask) Bootstrap() {
-	tool.PrettyPrint("Task Bootstrap...")
+	log.Println("task bootstrap...")
 
 	//初始化一个rabbit连接
 	cfg := tk.TkCfg
@@ -36,7 +35,7 @@ func (tk *ConsumeTask) Bootstrap() {
 
 //停止则回收相关资源
 func (tk *ConsumeTask) Stop() {
-	tool.PrettyPrint("Task Clean...")
+	log.Println("task clean...")
 
 	tk.MqGbVh.Close()
 	tk.TkDb.Close()
@@ -57,32 +56,32 @@ func (tk *ConsumeTask) GetWork(qn string, test bool) (workFn func([]byte) bool) 
 
 //测试仅做打印 message操作
 func (tk *ConsumeTask) workPrintMessage(msg []byte) bool {
-	log.Println("Working...")
-	//tool.PrettyPrint(string(data))
-	log.Println("Done")
+	log.Println("working...")
+	//log.Println(string(data))
+	log.Println("done")
 	return true
 }
 
 //接收消息审核任务
 func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
-	fmt.Println("Audit Message Task...")
+	fmt.Println("audit message task...")
 	//获取规则
 	var am rabbit.AuditMsg
 	err := json.Unmarshal(msg, &am)
 	if err != nil {
-		tool.ErrorLog(err, "unmarshal audit message fail")
+		log.Println(err, "unmarshal audit message fail")
 		return false
 	}
 
 	var bd rabbit.BusinessData
 	err = json.Unmarshal([]byte(am.BussData), &bd)
 	if err != nil {
-		tool.ErrorLog(err, "unmarshal business data fail")
+		log.Println(err, "unmarshal business data fail")
 		return false
 	}
 
-	tool.PrettyPrint("AuditMsg:", am)
-	tool.PrettyPrint("BussData:", bd)
+	log.Println("auditMsg:", am)
+	log.Println("bussData:", bd)
 
 	//hash map 规则
 	hashRuleTypes := GetRuleItems()
@@ -91,16 +90,16 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 		fmt.Println(am.AuditMark, "hash key not exist")
 		return false
 	}
-	tool.PrettyPrintf("%+v", at)
+	log.Printf("%+v", at)
 
 	//规则校验(rt)
 	matchAction, mrm := RunRuleMatch(&bd, &at)
-	fmt.Println("RunRuleMatch----->:", matchAction)
+	log.Println("RunRuleMatch----->", matchAction)
 
 	//自动通过|驳回|转人工审核（写db)
 	tk.insertAuditMsg(am, bd, &at, matchAction, mrm)
 
-	tool.PrettyPrint("Audit Message Task Done !!")
+	log.Println("Audit Message Task Done !!")
 	return true
 }
 
@@ -110,7 +109,7 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 
 	//检测审核规则是否为空
 	if len(at.RuleList) == 0 {
-		tool.ErrorLogP("Audit rule list is empty")
+		log.Println("Audit rule list is empty")
 	}
 
 	//sql
@@ -123,7 +122,7 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 		"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);"
 	stmt, err := db.Prepare(sql)
 	if err != nil {
-		tool.ErrorLog(err, "insert into audit_message Prepare fail")
+		log.Println(err, "insert into audit_message Prepare fail")
 		return
 	}
 	defer stmt.Close()
@@ -144,11 +143,11 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 		time.Now().Unix(),
 	)
 	if err != nil {
-		tool.ErrorLog(err, "insert into audit_message Exec fail")
+		log.Println(err, "insert into audit_message Exec fail")
 		return
 	}
 	lastId, err := result.LastInsertId()
-	tool.PrettyPrintf("Success insert id: %d", lastId)
+	log.Printf("Success insert id: %d", lastId)
 
 	//自动通过或拒绝，发布消息
 	if engineReturn := matchAction != AuditStatus[ObsAudit]; engineReturn {
@@ -159,7 +158,7 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 
 //同步审核结果任务
 func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
-	tool.PrettyPrint("Update Rule Result Task...")
+	log.Println("Update Rule Result Task...")
 
 	db := tk.TkDb.Db
 
@@ -167,7 +166,7 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	var par rabbit.PersonAuditResult
 	err := json.Unmarshal(msg, &par)
 	if err != nil {
-		tool.ErrorLog(err, "unmarshal person audit result fail")
+		log.Println(err, "unmarshal person audit result fail")
 		return false
 	}
 
@@ -175,7 +174,7 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	sql := "UPDATE audit_message SET audit_status=? WHERE message_id = ?"
 	stmt, err := db.Prepare(sql)
 	if err != nil {
-		tool.ErrorLog(err, "upd prepare fail")
+		log.Println(err, "upd prepare fail")
 		return false
 	}
 
@@ -183,22 +182,22 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	adStat := bucket.ObsAudStat[par.Status]
 	rst, err := stmt.Exec(adStat, par.MsgId)
 	if err != nil {
-		tool.ErrorLog(err, "upd audit status exec fail(stmt.exec)")
+		log.Println(err, "upd audit status exec fail(stmt.exec)")
 		return false
 	}
 	stmt.Close()
 
 	rn, err := rst.RowsAffected()
 	if err != nil || rn == 0 {
-		tool.ErrorLog(err, "upd audit status fail(update none row)")
+		log.Println(err, "upd audit status fail(update none row)")
 		return false
 	}
-	tool.PrettyPrintf("Success update rows: %d", rn)
+	log.Printf("Success update rows: %d", rn)
 
 	//send msg to soa
 	tk.sendBackMsg(par.MsgId, false)
 
-	tool.PrettyPrint("Done")
+	log.Println("Done")
 	return true
 }
 
@@ -255,14 +254,14 @@ WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
 		&bk.AuditTime,
 	)
 	if err != nil {
-		tool.ErrorLog(err, "rows scan fail")
+		log.Println(err, "rows scan fail")
 		return
 	}
 	bk.AuditStatus = bucket.SoaAudStat[bk.AuditStatus]
-	tool.PrettyPrintf("audit back msg : %+v", bk)
+	log.Printf("audit back msg : %+v", bk)
 	b, err := json.Marshal(bk)
 	if err != nil {
-		tool.ErrorLog(err, "marshal result msg data fail")
+		log.Println(err, "marshal result msg data fail")
 		return
 	}
 
