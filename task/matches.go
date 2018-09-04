@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/tool"
+	"strconv"
 	"strings"
 )
 
@@ -76,26 +77,46 @@ func bussDataToString(field string, bussData *rabbit.BusinessData) string {
 
 //rule item比较，返回指定item是否满足条件
 func valueCompare(field string, operate string, value string) bool {
+
+	var fieldF, valueF float64
+
+	//输入数据转float64
+	switch operate {
+	case ">":
+	case ">=":
+	case "<":
+	case "<=":
+	case "<>":
+	case "==":
+		fieldF, _ = strconv.ParseFloat(field, 64)
+		valueF, _ = strconv.ParseFloat(value, 64)
+	case "between":
+		fieldF, _ = strconv.ParseFloat(field, 64)
+	}
+
+	//数据对比
 	var rs bool
 	switch operate {
 	case ">":
-		rs = field > value
+		rs = fieldF > valueF
 	case ">=":
-		rs = field >= value
+		rs = fieldF >= valueF
 	case "<":
-		rs = field < value
+		rs = fieldF < valueF
 	case "<=":
-		rs = field <= value
+		rs = fieldF <= valueF
 	case "<>":
-		rs = field != value
+		rs = fieldF != valueF
 	case "==":
-		rs = field == value
+		rs = fieldF == valueF
 	case "between": //1-5
 		ss := strings.Split(value, "-")
+		min, _ := strconv.ParseFloat(ss[0], 64)
 		if len(ss) > 1 {
-			rs = field >= ss[0] && field <= ss[1]
+			max, _ := strconv.ParseFloat(ss[1], 64)
+			rs = fieldF >= min && fieldF <= max
 		} else {
-			rs = field >= ss[0]
+			rs = fieldF >= min
 		}
 	case "in":
 		rs = strings.Contains(value, field)
@@ -125,7 +146,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 			im := ItemMatch{
 				ItemId:  item.ItemId,
 				IMatch:  match,
-				Explain: fmt.Sprintf("(bussData.%v) [%v] [%v] [%v]", item.Field, field, item.Operate, item.Value),
+				Explain: fmt.Sprintf(`(bussData.%v) [%v %v %v]`, item.Field, field, item.Operate, item.Value),
 			}
 			iml = append(iml, im)
 		}
