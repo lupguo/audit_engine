@@ -64,7 +64,7 @@ func (tk *ConsumeTask) workPrintMessage(msg []byte) bool {
 
 //接收消息审核任务
 func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
-	fmt.Println("audit message task...")
+	log.Println("audit message task start...")
 	//获取规则
 	var am rabbit.AuditMsg
 	err := json.Unmarshal(msg, &am)
@@ -80,26 +80,26 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 		return false
 	}
 
-	log.Println("auditMsg:", am)
-	log.Println("bussData:", bd)
+	log.Printf("auditMsg: %+v\n", am)
+	log.Printf("bussData: %+v\n", bd)
 
 	//hash map 规则
-	hashRuleTypes := GetRuleItems()
+	hashRuleTypes := tk.GetRuleItems()
 	at, ok := hashRuleTypes[am.AuditMark]
 	if !ok {
 		fmt.Println(am.AuditMark, "hash key not exist")
 		return false
 	}
-	log.Printf("%+v", at)
+	log.Printf("rule type: %+v", at)
 
 	//规则校验(rt)
 	matchAction, mrm := RunRuleMatch(&bd, &at)
-	log.Println("RunRuleMatch----->", matchAction)
+	log.Println("RunRuleMatch(20：引擎通过,21：引擎拒绝,22：规则全不匹配，自动通过,30：转人工审核)----->", matchAction)
 
 	//自动通过|驳回|转人工审核（写db)
 	tk.insertAuditMsg(am, bd, &at, matchAction, mrm)
 
-	log.Println("Audit Message Task Done !!")
+	log.Println("audit message task done !!")
 	return true
 }
 
@@ -147,7 +147,7 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 		return
 	}
 	lastId, err := result.LastInsertId()
-	log.Printf("Success insert id: %d", lastId)
+	log.Printf("success insert id: %d", lastId)
 
 	//自动通过或拒绝，发布消息
 	if engineReturn := matchAction != AuditStatus[ObsAudit]; engineReturn {
@@ -158,7 +158,7 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 
 //同步审核结果任务
 func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
-	log.Println("Update Rule Result Task...")
+	log.Println("update audit result task start...")
 
 	db := tk.TkDb.Db
 
@@ -192,12 +192,12 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 		log.Println(err, "upd audit status fail(update none row)")
 		return false
 	}
-	log.Printf("Success update rows: %d", rn)
+	log.Printf("update rows num: %d", rn)
 
 	//send msg to soa
 	tk.sendBackMsg(par.MsgId, false)
 
-	log.Println("Done")
+	log.Println("update audit result task done")
 	return true
 }
 

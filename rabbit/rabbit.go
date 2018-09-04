@@ -80,7 +80,7 @@ func (mq *MQ) ConsumeBind(qn string, fn func([]byte) bool, noAck bool) {
 	forever := make(chan bool)
 	go func() {
 		for d := range msgs {
-			log.Printf("received a message: %+v", d.Body)
+			log.Printf("Received message: %s", d.Body)
 			fn(d.Body)
 			if !noAck {
 				d.Ack(false)

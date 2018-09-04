@@ -67,7 +67,7 @@ func bussDataToString(field string, bussData *rabbit.BusinessData) string {
 }
 
 //rule多条规则比较
-//返回结果: r 1 系统通过，2 系统驳回，3 转人工审核
+//返回结果: 1 系统通过，2 系统驳回，3 转人工审核
 func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, RuleMatch) {
 
 	var rml []RuleMatch
@@ -118,7 +118,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 			ItemMatches: iml,
 		})
 
-		log.Printf("%+v", rml[len(rml)-1])
+		log.Printf("Rule[%d]: %+v\n", i, rml[len(rml)-1])
 
 		if result == RuleMatched { //任一条rule通过，则进入下一步
 			//1 系统通过，2 系统驳回，3 转人工审核，

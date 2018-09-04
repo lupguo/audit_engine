@@ -29,6 +29,7 @@ func (mdb *DbMysql) init() {
 
 func (mdb *DbMysql) Connect(dbcf Config) {
 	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s", dbcf.User, dbcf.Pass, dbcf.Protocol, dbcf.Host, dbcf.Port, dbcf.DbName)
+	//log.Println(dsn)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		tool.FatalLog(err, "connect to mysql fail")

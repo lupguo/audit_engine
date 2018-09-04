@@ -1,7 +1,6 @@
 package task
 
 import (
-	"github.com/tkstorm/audit_engine/config"
 	"github.com/tkstorm/audit_engine/mydb"
 	"log"
 )
@@ -38,17 +37,13 @@ type RuleItem struct {
 }
 
 //规则项(compare_type 1:阈值 2:字段）
-func GetRuleItems() AuditTemplate {
-	log.Println(config.GlobaleCFG)
-
-	var dbMysql mydb.DbMysql
-	dbcf := config.GlobaleCFG.Mysql
-	dbMysql.Connect(dbcf)
-	defer dbMysql.Close()
+func (tk *ConsumeTask) GetRuleItems() AuditTemplate {
+	println("get rule items from db")
+	db := tk.TkDb.Db
 
 	//---------审核类型
 	sql := `select id, title, sort,audit_mark from audit_template;`
-	rows, err := dbMysql.Db.Query(sql)
+	rows, err := db.Query(sql)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -70,7 +65,7 @@ func GetRuleItems() AuditTemplate {
 	rows.Close()
 
 	//----------规则条目
-	stmt, err := dbMysql.Db.Prepare("select id ,template_id, items_relation, process_type, workflow_id, base_profit_margin " +
+	stmt, err := db.Prepare("select id ,template_id, items_relation, process_type, workflow_id, base_profit_margin " +
 		"from audit_rule WHERE template_id IN (" + mydb.Concat(typeIds) + ") " +
 		"ORDER BY sort ASC;")
 	if err != nil {
@@ -81,13 +76,13 @@ func GetRuleItems() AuditTemplate {
 		log.Fatal(err)
 	}
 
-	var aRuls []AuditRule
+	var aRules []AuditRule
 	var rids []interface{}
 	var ar AuditRule
 	ruleGroups := make(map[int][]AuditRule, len(aTypes))
 	for rows.Next() {
 		rows.Scan(&ar.RuleId, &ar.TypeId, &ar.RuleRel, &ar.RuleProc, &ar.FlowId, &ar.Profit)
-		aRuls = append(aRuls, ar)
+		aRules = append(aRules, ar)
 		//规则条目 list
 		rids = append(rids, ar.RuleId)
 
@@ -98,7 +93,7 @@ func GetRuleItems() AuditTemplate {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//log.Println("aRuls:\n", aRuls)
+	//log.Println("aRules:\n", aRules)
 	//log.Println("ruleGroups:\n", ruleGroups)
 	rows.Close()
 	stmt.Close()
@@ -113,7 +108,7 @@ func GetRuleItems() AuditTemplate {
 
 	//--------比较项
 	sql = "select rule_id,compare_type,field,operation,value from audit_rule_item WHERE rule_id IN (" + mydb.Concat(rids) + ")"
-	stmt, err = dbMysql.Db.Prepare(sql)
+	stmt, err = db.Prepare(sql)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,7 +120,7 @@ func GetRuleItems() AuditTemplate {
 	defer rows.Close()
 
 	var items []RuleItem
-	itemGroups := make(map[int][]RuleItem, len(aRuls))
+	itemGroups := make(map[int][]RuleItem, len(aRules))
 	for rows.Next() {
 		var k RuleItem
 		rows.Scan(&k.ItemId, &k.CompareType, &k.Field, &k.Operate, &k.Value)
@@ -142,7 +137,7 @@ func GetRuleItems() AuditTemplate {
 		}
 	}
 
-	log.Println("hashAuditTemplate:", hashAuditTemplate)
+	log.Printf("hashAuditTemplate: %+v\n", hashAuditTemplate)
 
 	return hashAuditTemplate
 }

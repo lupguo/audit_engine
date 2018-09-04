@@ -90,13 +90,8 @@ func (cfg *CFG) ShowInfo(cmd CmdArgs) (out bool) {
 }
 
 func (cfg *CFG) PrintEnv() {
-	//print config
-	log.Println(cfg.GetVersion(cfg.EInfo))
-	log.Println("config_file:", cfg.ConfigFile)
-	log.Println("testing:", cfg.Test)
-
-	//cmd print
-	log.Println("cmd input", fmt.Sprintf("%+v", cfg.cmd))
+	cfg.PrintVersion()
+	log.Printf("cmdline: %+v\n", cfg.cmd)
 }
 
 func (cfg *CFG) PrintVersion() {

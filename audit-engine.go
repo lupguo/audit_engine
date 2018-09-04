@@ -34,14 +34,13 @@ func main() {
 	//create mq
 	mq := getMqByQueName(cmd.QName)
 	q := mq.Create(cmd.QName)
-	log.Println("deal with queue:", q.Name)
 
 	switch {
 	case cmd.Pub:
-		log.Println("message cmdline publish...")
+		log.Println("message publish to queue:", q.Name)
 		mq.Publish(q.Name, msgData(q.Name), cmd.RepNumber)
 	case cmd.Cus:
-		log.Println("message cmdline consume...")
+		log.Println("message consume from queue:", q.Name)
 		mq.ConsumeBind(q.Name, tk.GetWork(q.Name, cmd.T), cmd.NoAck)
 	default:
 		log.Fatalln("[x]", "queue must be consume or publish")
