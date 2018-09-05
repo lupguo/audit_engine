@@ -6,7 +6,7 @@ import (
 )
 
 //规则哈希表
-type AuditTemplate map[string]AuditType
+type AuditTypeList map[string]AuditType
 
 //规则类型
 type AuditType struct {
@@ -36,9 +36,13 @@ type RuleItem struct {
 	Value       string
 }
 
+var z AuditTypeList
+
 //规则项(compare_type 1:阈值 2:字段）
-func (tk *ConsumeTask) GetRuleItems() AuditTemplate {
-	println("get rule items from db")
+func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
+
+	log.Print("sql get rule items!!")
+
 	db := tk.TkDb.Db
 
 	//---------审核类型
@@ -99,12 +103,12 @@ func (tk *ConsumeTask) GetRuleItems() AuditTemplate {
 	stmt.Close()
 
 	//分组+哈希表填充
-	hashAuditTemplate := make(AuditTemplate, 10)
+	hashAuditTypeList := make(AuditTypeList, 10)
 	for i, at := range aTypes {
 		aTypes[i].RuleList = ruleGroups[at.TypeId]
-		hashAuditTemplate[at.AuditMark] = aTypes[i]
+		hashAuditTypeList[at.AuditMark] = aTypes[i]
 	}
-	//log.Println("hashAuditTemplate:\n", hashAuditTemplate)
+	//log.Println("hashAuditTypeList:\n", hashAuditTypeList)
 
 	//--------比较项
 	sql = "select rule_id,compare_type,field,operation,value from audit_rule_item WHERE rule_id IN (" + mydb.Concat(rids) + ")"
@@ -131,13 +135,15 @@ func (tk *ConsumeTask) GetRuleItems() AuditTemplate {
 	//log.Println("itemGroups:\n", itemGroups)
 
 	//哈希表填充
-	for k, t := range hashAuditTemplate {
+	for k, t := range hashAuditTypeList {
 		for kk, r := range t.RuleList {
-			hashAuditTemplate[k].RuleList[kk].ItemList = itemGroups[r.RuleId]
+			hashAuditTypeList[k].RuleList[kk].ItemList = itemGroups[r.RuleId]
 		}
 	}
 
-	log.Printf("hashAuditTemplate: %+v\n", hashAuditTemplate)
+	log.Printf("hashAuditTypeList: %+v\n", hashAuditTypeList)
 
-	return hashAuditTemplate
+	z = hashAuditTypeList
+
+	return hashAuditTypeList
 }

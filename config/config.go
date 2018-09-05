@@ -24,8 +24,6 @@ type CFG struct {
 	Mysql      mydb.Config
 }
 
-var GlobaleCFG CFG
-
 //version info
 func (cfg *CFG) GetVersion(egi EngineInfo) string {
 	return fmt.Sprintf("%s, %s", egi.Name, egi.Version)
@@ -71,8 +69,6 @@ func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 		Protocol: viper.GetString("mysql.protocol"),
 	}
 
-	//save global cfg
-	GlobaleCFG = *cfg
 }
 
 //show all info
