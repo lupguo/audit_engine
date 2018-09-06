@@ -8,14 +8,14 @@ type QueueWork map[string]func([]byte)
 //-----------------
 //审核响应消息结构
 type AuditBackMsg struct {
-	SiteCode    string //站点
-	BussUuid    string //唯一业务ID(default uuid=0)
-	AuditMark   string //消息审核模板类型
-	AuditStatus int    //审核状态(1.审核中 2.审核通过 3.审核不通过)
-	AuditRemark string //审核备注
-	AuditUid    int    //审核人ID
-	AuditUser   string //审核人（默认为系统）
-	AuditTime   int    //发起时间
+	SiteCode    string `json:"siteCode"`    //站点
+	BussUuid    string `json:"bussUuid"`    //唯一业务ID(default uuid=0)
+	AuditMark   string `json:"auditMark"`   //消息审核模板类型
+	AuditStatus int    `json:"auditStatus"` //审核状态(1.审核中 2.审核通过 3.审核不通过)
+	AuditRemark string `json:"auditRemark"` //审核备注
+	AuditUid    int    `json:"auditUid"`    //审核人ID
+	AuditUser   string `json:"auditUser"`   //审核人（默认为系统）
+	AuditTime   int    `json:"auditTime"`   //发起时间
 }
 
 //审核消息结构

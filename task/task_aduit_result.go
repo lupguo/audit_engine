@@ -112,12 +112,12 @@ WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
 		return
 	}
 	bk.AuditStatus = bucket.SoaAudStat[bk.AuditStatus]
-	log.Printf("audit back msg : %+v", bk)
 	b, err := json.Marshal(bk)
 	if err != nil {
 		log.Println(err, "marshal result msg data fail")
 		return
 	}
+	log.Printf("audit back msg : %s", b)
 
 	//msg return
 	tk.MqGbVh.Publish(config.QueName["SOA_AUDIT_BACK_MSG"], b, 1)
