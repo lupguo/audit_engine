@@ -30,6 +30,7 @@ type AuditRule struct {
 
 type RuleItem struct {
 	ItemId      int
+	RuleId      int
 	CompareType int
 	Field       string
 	Operate     string
@@ -111,7 +112,7 @@ func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
 	//log.Println("hashAuditTypeList:\n", hashAuditTypeList)
 
 	//--------比较项
-	sql = "select rule_id,compare_type,field,operation,value from audit_rule_item WHERE rule_id IN (" + mydb.Concat(rids) + ")"
+	sql = "select id, rule_id,compare_type,field,operation,value from audit_rule_item WHERE rule_id IN (" + mydb.Concat(rids) + ")"
 	stmt, err = db.Prepare(sql)
 	if err != nil {
 		log.Fatal(err)
@@ -127,10 +128,9 @@ func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
 	itemGroups := make(map[int][]RuleItem, len(aRules))
 	for rows.Next() {
 		var k RuleItem
-		rows.Scan(&k.ItemId, &k.CompareType, &k.Field, &k.Operate, &k.Value)
+		rows.Scan(&k.ItemId, &k.RuleId, &k.CompareType, &k.Field, &k.Operate, &k.Value)
 		items = append(items, k)
-
-		itemGroups[k.ItemId] = append(itemGroups[k.ItemId], k)
+		itemGroups[k.RuleId] = append(itemGroups[k.RuleId], k)
 	}
 	//log.Println("itemGroups:\n", itemGroups)
 

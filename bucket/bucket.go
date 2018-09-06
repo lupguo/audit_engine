@@ -6,8 +6,8 @@ package bucket
 
 const (
 	//result
-	Pass   = 1
-	Reject = 2
+	Pass   = 2
+	Reject = 3
 
 	//cancel
 	ApplyCancel = 10

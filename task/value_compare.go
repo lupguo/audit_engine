@@ -18,7 +18,7 @@ func ValueCompare(field string, operate string, value string) bool {
 		rs = numberCompare(field, operate, value)
 	case "<>":
 		rs = numberCompare(field, operate, value)
-	case "==":
+	case "=":
 		rs = numberCompare(field, operate, value)
 	case "between": //1-5
 		rs = numberBetween(field, value)
@@ -50,7 +50,7 @@ func numberCompare(field string, operate string, value string) bool {
 		rs = fpf <= vpf
 	case "<>":
 		rs = fpf != vpf
-	case "==":
+	case "=":
 		rs = fpf == vpf
 	}
 	return rs

@@ -53,17 +53,22 @@ func bussDataToString(field string, bussData *rabbit.BusinessData) string {
 	switch field {
 	case "catId":
 		return fmt.Sprintf("%d", bussData.CatId)
+	case "changeType":
+		return fmt.Sprintf("%d", bussData.ChangeType)
 	case "chargePrice":
 		return fmt.Sprintf("%0.4f", bussData.ChargePrice)
+	case "pipelineCode":
+		return bussData.PipelineCode
+	case "priceLoss":
+		return fmt.Sprintf("%0.4f", bussData.PriceLoss)
 	case "rate":
 		return fmt.Sprintf("%0.4f", bussData.Rate)
+	case "sysLabelId":
+		return fmt.Sprintf("%d", bussData.SysLabelId)
 	case "virWhCode":
 		return bussData.VirWhCode
-	case "priceLoss":
-		return "0.1"
 	}
-
-	return ""
+	return "=X="
 }
 
 //rule多条规则比较
