@@ -13,8 +13,9 @@ const (
 	ApplyCancel = 10
 
 	//engine
-	AutoPass   = 20
-	AutoReject = 21
+	AutoPass       = 20
+	AutoReject     = 21
+	NMatchAutoPass = 22
 
 	//audit
 	Auditing    = 30
@@ -35,6 +36,7 @@ var SoaAudStat = map[int]int{
 	AutoReject:  Reject,
 	AuditReject: Reject,
 	//通过
-	AutoPass:  Pass,
-	AuditPass: Pass,
+	AutoPass:       Pass,
+	AuditPass:      Pass,
+	NMatchAutoPass: Pass,
 }
