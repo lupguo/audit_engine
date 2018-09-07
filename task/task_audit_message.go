@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -13,8 +14,8 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 	log.Println("audit message task start...")
 
 	//审核数据
-	var am rabbit.AuditMsg
-	err := json.Unmarshal(msg, &am)
+	var audMsg rabbit.AuditMsg
+	err := json.Unmarshal(msg, &audMsg)
 	if err != nil {
 		log.Println(err, "unmarshal audit message fail")
 		return false
@@ -22,51 +23,95 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 
 	//业务数据
 	var bd rabbit.BusinessData
-	err = json.Unmarshal([]byte(am.BussData), &bd)
+	err = json.Unmarshal([]byte(audMsg.BussData), &bd)
 	if err != nil {
 		log.Println(err, "unmarshal business data fail")
 		return false
 	}
-	log.Printf("auditMsg: %+v\n", am)
+	log.Printf("auditMsg: %+v\n", audMsg)
 	log.Printf("bussData: %+v\n", bd)
 
 	//hashmap 规则
 	hashRuleTypes := tk.GetRuleItems()
-	at, ok := hashRuleTypes[am.AuditMark]
+	audType, ok := hashRuleTypes[audMsg.AuditMark]
 	if !ok {
-		fmt.Println(am.AuditMark, "hash key not exist")
+		fmt.Println(audMsg.AuditMark, "hash key not exist")
 		return false
 	}
-	log.Printf("rule type: %+v", at)
+	log.Printf("rule type: %+v", audType)
 
 	//规则校验(rt)
-	matchAction, mrm := RunRuleMatch(&bd, &at)
-	log.Println("RunRuleMatch(20：引擎通过,21：引擎拒绝,22：规则全不匹配，自动通过,30：转人工审核)----->", matchAction)
+	audStat, rulMch := RunRuleMatch(&bd, &audType)
+	log.Println("RunRuleMatch(20：引擎通过,21：引擎拒绝,22：规则全不匹配，自动通过,30：转人工审核)----->", audStat)
 
 	//自动通过|驳回|转人工审核（写db)
-	tk.insertAuditMsg(am, bd, &at, matchAction, mrm)
+	tk.insertAuditMsg(audMsg, &audType, audStat, rulMch)
 
 	log.Println("audit message task done !!")
 	return true
 }
 
 //审核消息入库
-func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData, at *AuditType, matchAction int, mrm RuleMatch) {
+func (tk *ConsumeTask) insertAuditMsg(audMsg rabbit.AuditMsg, audType *AuditType, audStat int, rulMch RuleMatch) {
 	db := tk.TkDb.Db
 
 	//检测审核规则是否为空
-	if len(at.RuleList) == 0 {
+	if len(audType.RuleList) == 0 {
 		log.Println("audit rule list is empty")
 	}
 
-	//sql
-	sql := "INSERT INTO audit_message (" +
-		"site_code, rule_id,template_id, audit_sort, audit_mark, audit_name," +
-		"business_uuid, business_data, " +
-		"create_user,workflow_id,audit_status, module, " +
-		"create_time" +
-		")" +
-		"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);"
+	//自动通过或拒绝
+	fields := []string{
+		"site_code",
+		"rule_id",
+		"template_id",
+		"audit_sort",
+		"audit_mark",
+		"audit_name",
+		"business_uuid",
+		"business_data",
+		"create_user",
+		"workflow_id",
+		"audit_status",
+		"module",
+		"create_time",
+	}
+	args := []interface{}{
+		audMsg.SiteCode,
+		rulMch.RuleId,
+		audType.TypeId,
+		audType.AuditSort,
+		audType.AuditMark,
+		audType.TypeTitle,
+		audMsg.BussUuid,
+		audMsg.BussData,
+		audMsg.CreateUser,
+		rulMch.FlowId,
+		audStat,
+		audMsg.Module,
+		time.Now().Unix(),
+	}
+
+	//系统审核结束，非人工审核，db新增系统审核明细
+	audOver := audStat != AuditStatus[ObsAudit]
+	if audOver {
+		fields = append(fields,
+			"audit_desc",
+			"update_user",
+			"update_time",
+		)
+		args = append(args,
+			GetAdStatDesc(audStat, ""),
+			"系统",
+			time.Now().Unix(),
+		)
+	}
+
+	//sql组装
+	sql := fmt.Sprintf("INSERT INTO audit_message (%s) VALUES (%s)",
+		strings.Join(fields, ","),
+		strings.Repeat("?,", len(fields))[:2*len(fields)-1],
+	)
 	stmt, err := db.Prepare(sql)
 	if err != nil {
 		log.Println(err, "insert into audit_message Prepare fail")
@@ -74,21 +119,8 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 	}
 	defer stmt.Close()
 
-	result, err := stmt.Exec(
-		am.SiteCode,
-		mrm.RuleId,
-		at.TypeId,
-		at.AuditSort,
-		at.AuditMark,
-		at.TypeTitle,
-		am.BussUuid,
-		am.BussData,
-		am.CreateUser,
-		mrm.FlowId,
-		matchAction,
-		am.Module,
-		time.Now().Unix(),
-	)
+	//sql执行
+	result, err := stmt.Exec(args...)
 	if err != nil {
 		log.Println(err, "insert into audit_message Exec fail")
 		return
@@ -97,8 +129,7 @@ func (tk *ConsumeTask) insertAuditMsg(am rabbit.AuditMsg, bd rabbit.BusinessData
 	log.Printf("success insert id: %d", lastId)
 
 	//自动通过或拒绝，发布消息
-	if engineReturn := matchAction != AuditStatus[ObsAudit]; engineReturn {
-		tk.sendBackMsg(lastId, engineReturn)
+	if audOver {
+		tk.sendBackMsg(lastId)
 	}
-
 }

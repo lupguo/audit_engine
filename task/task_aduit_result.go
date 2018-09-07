@@ -2,7 +2,6 @@ package task
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/tkstorm/audit_engine/bucket"
 	"github.com/tkstorm/audit_engine/config"
 	"github.com/tkstorm/audit_engine/rabbit"
@@ -13,7 +12,6 @@ import (
 //同步审核结果任务
 func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	log.Println("update audit result task start...")
-
 	db := tk.TkDb.Db
 
 	//obs audit result
@@ -24,23 +22,22 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 		return false
 	}
 
-	//sql update `audit_record` & select * from `audit_record`
+	//更新审核记录状态、更新时间
+	//人工审核状态转换
+	audStat := bucket.ObsAudStat[par.Status]
 	sql := "UPDATE audit_message SET audit_status=?, update_time=? WHERE message_id = ?"
 	stmt, err := db.Prepare(sql)
 	if err != nil {
 		log.Println(err, "upd prepare fail")
 		return false
 	}
-
-	//人工审核状态转换
-	adStat := bucket.ObsAudStat[par.Status]
-	rst, err := stmt.Exec(adStat, time.Now().Unix(), par.MsgId)
+	rst, err := stmt.Exec(audStat, time.Now().Unix(), par.MsgId)
 	if err != nil {
 		log.Println(err, "upd audit status exec fail(stmt.exec)")
 		return false
 	}
 	stmt.Close()
-
+	//行记录
 	rn, err := rst.RowsAffected()
 	if err != nil || rn == 0 {
 		log.Println(err, "upd audit status fail(update none row)")
@@ -49,70 +46,56 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	log.Printf("update rows num: %d", rn)
 
 	//send msg to soa
-	tk.sendBackMsg(par.MsgId, false)
+	tk.sendBackMsg(par.MsgId)
 
 	log.Println("update audit result task done")
 	return true
 }
 
-func (tk *ConsumeTask) sendBackMsg(msgId int64, engineReturn bool) {
+//从db查出messageId信息组装好消息，推送消息给SOA mq
+func (tk *ConsumeTask) sendBackMsg(msgId int64) {
 	db := tk.TkDb.Db
 
 	//select info & return to soa_back_msg
-	sql := ""
-	if engineReturn {
-		sql = fmt.Sprintf(`
+	sql := `
 SELECT
   m.site_code,
   m.business_uuid,
   m.audit_mark,
   m.audit_status,
-	"%s" as audit_explain,
-	%d as user_id,
-	"%s" as username,
-	%d as create_time
-FROM audit_message as m
-WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`,
-			"系统自动审核",
-			0,
-			"系统",
-			time.Now().Unix(),
-		)
-	} else {
-		sql = `
-SELECT
-  m.site_code,
-  m.business_uuid,
-  m.audit_mark,
-  m.audit_status,
-  mr.audit_explain,
-  mr.user_id,
-  mr.username,
-  mr.create_time
-FROM audit_record  AS mr LEFT JOIN audit_message as m USING(message_id)
+  m.update_time,
+  	COALESCE(r.audit_explain, ""),
+	COALESCE(r.user_id, 0),
+   	COALESCE(r.username, "")
+FROM audit_message as m LEFT JOIN audit_record AS r USING(message_id)
 WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
-	}
-
 	rows := db.QueryRow(sql, msgId)
-	//fmt.Println(sql, msgId)
 
-	var bk rabbit.AuditBackMsg
+	//scan rows
+	var bkMsg rabbit.AuditBackMsg
+	var audStat, audUid int
+	var audUser, audDesc string
+
 	err := rows.Scan(
-		&bk.SiteCode,
-		&bk.BussUuid,
-		&bk.AuditMark,
-		&bk.AuditStatus,
-		&bk.AuditRemark,
-		&bk.AuditUid,
-		&bk.AuditUser,
-		&bk.AuditTime,
+		&bkMsg.SiteCode,
+		&bkMsg.BussUuid,
+		&bkMsg.AuditMark,
+		&audStat,
+		&bkMsg.AuditTime,
+		&audDesc,
+		&audUid,
+		&audUser,
 	)
 	if err != nil {
 		log.Println(err, "rows scan fail")
 		return
 	}
-	bk.AuditStatus = bucket.SoaAudStat[bk.AuditStatus]
-	b, err := json.Marshal(bk)
+	bkMsg.AuditStatus = bucket.SoaAudStat[audStat]
+	bkMsg.AuditRemark = GetAdStatDesc(audStat, bkMsg.AuditRemark)
+	bkMsg.AuditUid = GetAdUid(audUid, 0)
+	bkMsg.AuditUser = GetAdUser(audUser, "系统")
+
+	b, err := json.Marshal(bkMsg)
 	if err != nil {
 		log.Println(err, "marshal result msg data fail")
 		return
@@ -121,4 +104,37 @@ WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
 
 	//msg return
 	tk.MqGbVh.Publish(config.QueName["SOA_AUDIT_BACK_MSG"], b, 1)
+}
+
+//审核状态描述
+func GetAdStatDesc(audStat int, defDesc string) string {
+	var desc string
+	switch audStat {
+	default:
+		desc = defDesc
+	case bucket.AutoPass:
+		desc = "系统审核自动通过"
+	case bucket.AutoReject:
+		desc = "系统审核自动拒绝"
+	case bucket.NMatchAutoPass:
+		desc = "规则不匹配，系统自动通过"
+	}
+
+	return desc
+}
+
+//审核Uid
+func GetAdUid(uid int, defUid int) int {
+	if uid > 0 {
+		return uid
+	}
+	return defUid
+}
+
+//审核人
+func GetAdUser(user string, defUser string) string {
+	if user != "" {
+		return user
+	}
+	return defUser
 }
