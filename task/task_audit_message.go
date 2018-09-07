@@ -20,6 +20,7 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 		log.Println(err, "unmarshal audit message fail")
 		return false
 	}
+	log.Printf("auditMsg: %+v\n", audMsg)
 
 	//业务数据
 	var bd rabbit.BusinessData
@@ -28,7 +29,6 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 		log.Println(err, "unmarshal business data fail")
 		return false
 	}
-	log.Printf("auditMsg: %+v\n", audMsg)
 	log.Printf("bussData: %+v\n", bd)
 
 	//hashmap 规则

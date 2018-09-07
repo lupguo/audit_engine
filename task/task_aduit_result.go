@@ -91,7 +91,7 @@ WHERE m.message_id = ? ORDER BY message_id desc LIMIT 1;`
 		return
 	}
 	bkMsg.AuditStatus = bucket.SoaAudStat[audStat]
-	bkMsg.AuditRemark = GetAdStatDesc(audStat, bkMsg.AuditRemark)
+	bkMsg.AuditRemark = GetAdStatDesc(audStat, audDesc)
 	bkMsg.AuditUid = GetAdUid(audUid, 0)
 	bkMsg.AuditUser = GetAdUser(audUser, "系统")
 
