@@ -140,7 +140,6 @@ func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
 			hashAuditTypeList[k].RuleList[kk].ItemList = itemGroups[r.RuleId]
 		}
 	}
-
 	log.Printf("hashAuditTypeList: %+v\n", hashAuditTypeList)
 
 	return hashAuditTypeList
