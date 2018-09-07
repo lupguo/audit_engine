@@ -143,7 +143,5 @@ func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
 
 	log.Printf("hashAuditTypeList: %+v\n", hashAuditTypeList)
 
-	z = hashAuditTypeList
-
 	return hashAuditTypeList
 }
