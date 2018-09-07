@@ -36,6 +36,7 @@ type RuleMatch struct {
 	RuleId      int
 	FlowId      int
 	RuleGo      int
+	Profit      float64
 	RMatch      bool
 	Explain     string
 	ItemMatches []ItemMatch
@@ -49,7 +50,7 @@ type ItemMatch struct {
 }
 
 //bussData 转成对应项的string值
-func bussDataToString(field string, bussData *rabbit.BusinessData) string {
+func bussDataToString(field string, bussData *rabbit.BusinessData, baseRate float64) string {
 	switch field {
 	case "catId":
 		return fmt.Sprintf("%d", bussData.CatId)
@@ -60,7 +61,7 @@ func bussDataToString(field string, bussData *rabbit.BusinessData) string {
 	case "pipelineCode":
 		return bussData.PipelineCode
 	case "priceLoss":
-		return fmt.Sprintf("%0.4f", bussData.PriceLoss)
+		return fmt.Sprintf("%0.4f", bussData.ChargePrice*(bussData.Rate-baseRate)/6.1)
 	case "rate":
 		return fmt.Sprintf("%0.4f", bussData.Rate)
 	case "sysLabelId":
@@ -83,7 +84,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 		var iml []ItemMatch
 
 		for _, item := range rule.ItemList {
-			field := bussDataToString(item.Field, bussData)
+			field := bussDataToString(item.Field, bussData, rule.Profit)
 			match := ValueCompare(field, item.Operate, item.Value)
 			im := ItemMatch{
 				ItemId:  item.ItemId,
@@ -118,6 +119,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 			RMatch:      result == RuleMatched,
 			RuleId:      rule.RuleId,
 			FlowId:      rule.FlowId,
+			Profit:      rule.Profit,
 			RuleGo:      rule.RuleProc,
 			Explain:     fmt.Sprintf("rule items rel %d (1:and 2:or)", rule.RuleRel),
 			ItemMatches: iml,
