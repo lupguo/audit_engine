@@ -95,11 +95,12 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 		}
 
 		//该条rule的验证结果
-		result := RuleMatched
+		var result int
 		switch rule.RuleRel {
 		case RelAnd:
 			for _, im := range iml {
 				if im.IMatch {
+					result = RuleMatched
 					continue
 				}
 				result = RuleNotMatched
@@ -108,6 +109,7 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 		case RelOr:
 			for _, im := range iml {
 				if im.IMatch {
+					result = RuleMatched
 					break
 				}
 				result = RuleNotMatched
