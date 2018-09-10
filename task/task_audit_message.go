@@ -11,7 +11,7 @@ import (
 
 //接收消息审核任务
 func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
-	log.Println("audit message task start...")
+	log.Println("==>audit message task start...")
 
 	//审核数据
 	var audMsg rabbit.AuditMsg
@@ -23,36 +23,36 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 	log.Printf("auditMsg: %+v\n", audMsg)
 
 	//业务数据
-	var bd rabbit.BusinessData
-	err = json.Unmarshal([]byte(audMsg.BussData), &bd)
+	var audBd rabbit.BusinessData
+	err = json.Unmarshal([]byte(audMsg.BussData), &audBd)
 	if err != nil {
 		log.Println(err, "unmarshal business data fail")
 		return false
 	}
-	log.Printf("bussData: %+v\n", bd)
+	log.Printf("bussData: %+v\n", audBd)
 
-	//hashmap 规则
+	//hash map 规则
 	hashRuleTypes := tk.GetRuleItems()
 	audType, ok := hashRuleTypes[audMsg.AuditMark]
 	if !ok {
 		fmt.Println(audMsg.AuditMark, "hash key not exist")
 		return false
 	}
-	log.Printf("rule type: %+v", audType)
+	log.Printf("ruleList: %+v", audType)
 
 	//规则校验(rt)
-	audStat, rulMch := RunRuleMatch(&bd, &audType)
-	log.Println("RunRuleMatch(20：引擎通过,21：引擎拒绝,22：规则全不匹配，自动通过,30：转人工审核)----->", audStat)
+	audStat, rulMch := RunRuleMatch(&audBd, &audType)
+	log.Println("matchResult(20：引擎通过,21：引擎拒绝,22：规则全不匹配，自动通过,30：转人工审核)----->", audStat)
 
 	//自动通过|驳回|转人工审核（写db)
-	tk.insertAuditMsg(audMsg, &audType, audStat, rulMch)
+	tk.insertAuditMsg(audMsg, audBd, &audType, audStat, rulMch)
 
-	log.Println("audit message task done !!")
+	log.Println("<==audit message task done !!")
 	return true
 }
 
 //审核消息入库
-func (tk *ConsumeTask) insertAuditMsg(audMsg rabbit.AuditMsg, audType *AuditType, audStat int, rulMch RuleMatch) {
+func (tk *ConsumeTask) insertAuditMsg(audMsg rabbit.AuditMsg, audBd rabbit.BusinessData, audType *AuditType, audStat int, rulMch RuleMatch) {
 	db := tk.TkDb.Db
 
 	//检测审核规则是否为空
@@ -82,7 +82,7 @@ func (tk *ConsumeTask) insertAuditMsg(audMsg rabbit.AuditMsg, audType *AuditType
 		audType.TypeId,
 		audType.AuditSort,
 		audType.AuditMark,
-		audType.TypeTitle,
+		fmt.Sprintf("sku:%s-%s", audBd.GoodSn, audType.TypeTitle),
 		audMsg.BussUuid,
 		audMsg.BussData,
 		audMsg.CreateUser,

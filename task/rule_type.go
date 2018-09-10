@@ -37,13 +37,8 @@ type RuleItem struct {
 	Value       string
 }
 
-var z AuditTypeList
-
 //规则项(compare_type 1:阈值 2:字段）
 func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
-
-	log.Print("sql get rule items!!")
-
 	db := tk.TkDb.Db
 
 	//---------审核类型

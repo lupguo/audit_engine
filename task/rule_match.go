@@ -33,11 +33,11 @@ var AuditStatus = map[int]int{
 
 //规则匹配结果
 type RuleMatch struct {
+	RMatch      bool
 	RuleId      int
 	FlowId      int
 	RuleGo      int
 	Profit      float64
-	RMatch      bool
 	Explain     string
 	ItemMatches []ItemMatch
 }
@@ -77,12 +77,12 @@ func bussDataToString(field string, bussData *rabbit.BusinessData, baseRate floa
 func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, RuleMatch) {
 
 	var rml []RuleMatch
-	lenRule := len(auditType.RuleList)
+	var result int
 
 	for i, rule := range auditType.RuleList {
-
 		var iml []ItemMatch
 
+		//item结果
 		for _, item := range rule.ItemList {
 			field := bussDataToString(item.Field, bussData, rule.Profit)
 			match := ValueCompare(field, item.Operate, item.Value)
@@ -94,21 +94,19 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 			iml = append(iml, im)
 		}
 
-		//该条rule的验证结果
-		var result int
+		//rule的验证结果
 		switch rule.RuleRel {
 		case RelAnd:
 			for _, im := range iml {
-				if im.IMatch {
-					result = RuleMatched
-					continue
+				if !im.IMatch { //与条件，只要有一个不匹配，直接不匹配
+					result = RuleNotMatched
+					break
 				}
-				result = RuleNotMatched
-				break
+				result = RuleMatched
 			}
 		case RelOr:
 			for _, im := range iml {
-				if im.IMatch {
+				if im.IMatch { //或条件，只要有一个匹配，直接匹配
 					result = RuleMatched
 					break
 				}
@@ -123,17 +121,14 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 			FlowId:      rule.FlowId,
 			Profit:      rule.Profit,
 			RuleGo:      rule.RuleProc,
-			Explain:     fmt.Sprintf("rule items rel %d (1:and 2:or)", rule.RuleRel),
+			Explain:     fmt.Sprintf("itemsRel=%d (1:and 2:or)", rule.RuleRel),
 			ItemMatches: iml,
 		})
 
-		log.Printf("Rule[%d]: %+v\n", i, rml[len(rml)-1])
+		log.Printf("rule[%d]: %+v\n", i, rml[i])
 
-		if result == RuleMatched { //任一条rule通过，则进入下一步
-			//1 系统通过，2 系统驳回，3 转人工审核，
+		if result == RuleMatched { //任一条rule通过，则按Rule Process处理
 			return AuditStatus[rule.RuleProc], rml[len(rml)-1]
-		} else if i < lenRule-2 {
-			continue
 		}
 	}
 
