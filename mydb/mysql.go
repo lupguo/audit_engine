@@ -7,15 +7,17 @@ import (
 	"github.com/tkstorm/audit_engine/tool"
 	"log"
 	"strings"
+	"time"
 )
 
 type Config struct {
-	Host     string
-	Port     int
-	User     string
-	Pass     string
-	Protocol string
-	DbName   string
+	Host        string
+	Port        int
+	User        string
+	Pass        string
+	Protocol    string
+	DbName      string
+	ConnMaxLife int
 }
 
 var DB *sql.DB
@@ -30,6 +32,12 @@ func Connect(dbcf Config) *sql.DB {
 	if err != nil {
 		tool.FatalLog(err, "connect to mysql fail")
 	}
+
+	//最大打开的连接数100
+	db.SetMaxOpenConns(100)
+
+	//连接的最大生命周期
+	db.SetConnMaxLifetime(time.Duration(dbcf.ConnMaxLife) * time.Second)
 	return db
 }
 

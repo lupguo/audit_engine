@@ -61,12 +61,13 @@ func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 
 	//init mysql config
 	cfg.Mysql = mydb.Config{
-		Host:     viper.GetString("mysql.host"),
-		Port:     viper.GetInt("mysql.port"),
-		User:     viper.GetString("mysql.user"),
-		Pass:     viper.GetString("mysql.pass"),
-		DbName:   viper.GetString("mysql.dbname"),
-		Protocol: viper.GetString("mysql.protocol"),
+		Host:        viper.GetString("mysql.host"),
+		Port:        viper.GetInt("mysql.port"),
+		User:        viper.GetString("mysql.user"),
+		Pass:        viper.GetString("mysql.pass"),
+		DbName:      viper.GetString("mysql.dbname"),
+		Protocol:    viper.GetString("mysql.protocol"),
+		ConnMaxLife: viper.GetInt("mysql.conn_max_life"),
 	}
 
 }
