@@ -37,6 +37,7 @@ func Connect(dbcf Config) *sql.DB {
 	db.SetMaxOpenConns(100)
 
 	//连接的最大生命周期
+	log.Println("db connection max alive time:", time.Duration(dbcf.ConnMaxLife)*time.Second)
 	db.SetConnMaxLifetime(time.Duration(dbcf.ConnMaxLife) * time.Second)
 	return db
 }
