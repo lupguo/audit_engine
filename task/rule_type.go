@@ -39,7 +39,7 @@ type RuleItem struct {
 
 //规则项(compare_type 1:阈值 2:字段）
 func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
-	db := tk.TkDb.Db
+	db := mydb.DB
 
 	//---------审核类型
 	sql := `select id, title, sort,audit_mark from audit_template;`

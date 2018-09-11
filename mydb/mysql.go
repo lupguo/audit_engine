@@ -18,26 +18,23 @@ type Config struct {
 	DbName   string
 }
 
-type DbMysql struct {
-	Dbcf Config
-	Db   sql.DB
-}
+var DB *sql.DB
 
-func (mdb *DbMysql) init() {
+func init() {
 	log.Println("mysql init...")
 }
 
-func (mdb *DbMysql) Connect(dbcf Config) {
+func Connect(dbcf Config) *sql.DB {
 	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s", dbcf.User, dbcf.Pass, dbcf.Protocol, dbcf.Host, dbcf.Port, dbcf.DbName)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		tool.FatalLog(err, "connect to mysql fail")
 	}
-	mdb.Db = *db
+	return db
 }
 
-func (mdb *DbMysql) Close() {
-	mdb.Db.Close()
+func Close(db sql.DB) {
+	db.Close()
 }
 
 //连接

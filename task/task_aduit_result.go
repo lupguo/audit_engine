@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/tkstorm/audit_engine/bucket"
 	"github.com/tkstorm/audit_engine/config"
+	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"log"
 	"time"
@@ -12,7 +13,7 @@ import (
 //同步审核结果任务
 func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	log.Println("update audit result task start...")
-	db := tk.TkDb.Db
+	db := mydb.DB
 
 	//obs audit result
 	var par rabbit.PersonAuditResult
@@ -54,7 +55,7 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 
 //从db查出messageId信息组装好消息，推送消息给SOA mq
 func (tk *ConsumeTask) sendBackMsg(msgId int64) {
-	db := tk.TkDb.Db
+	db := mydb.DB
 
 	//select info & return to soa_back_msg
 	sql := `

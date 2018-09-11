@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/tkstorm/audit_engine/config"
+	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"github.com/tkstorm/audit_engine/task"
 	"github.com/tkstorm/audit_engine/tool"
@@ -26,10 +27,13 @@ func main() {
 		return
 	}
 
-	//任务初始化
+	//任务mq初始化
 	tk = task.ConsumeTask{TkCfg: cfg}
 	tk.Bootstrap()
 	defer tk.Stop()
+
+	//db初始化
+	mydb.DB = mydb.Connect(cfg.Mysql)
 
 	//create mq
 	mq := getMqByQueName(cmd.QName)

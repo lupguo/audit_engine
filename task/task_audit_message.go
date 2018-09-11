@@ -3,6 +3,7 @@ package task
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
 	"log"
 	"strings"
@@ -53,7 +54,7 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 
 //审核消息入库
 func (tk *ConsumeTask) insertAuditMsg(audMsg rabbit.AuditMsg, audBd rabbit.BusinessData, audType *AuditType, audStat int, rulMch RuleMatch) {
-	db := tk.TkDb.Db
+	db := mydb.DB
 
 	//检测审核规则是否为空
 	if len(audType.RuleList) == 0 {
