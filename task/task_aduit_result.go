@@ -12,7 +12,6 @@ import (
 
 //同步审核结果任务
 func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
-	log.Println("update audit result task start...")
 	db := mydb.DB
 
 	//obs audit result
@@ -49,7 +48,6 @@ func (tk *ConsumeTask) workUpdateAuditResult(msg []byte) bool {
 	//send msg to soa
 	tk.sendBackMsg(par.MsgId)
 
-	log.Println("update audit result task done")
 	return true
 }
 

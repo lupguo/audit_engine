@@ -12,8 +12,6 @@ import (
 
 //接收消息审核任务
 func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
-	log.Println("==>audit message task start...")
-
 	//审核数据
 	var audMsg rabbit.AuditMsg
 	err := json.Unmarshal(msg, &audMsg)
@@ -36,7 +34,7 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 	hashRuleTypes := tk.GetRuleItems()
 	audType, ok := hashRuleTypes[audMsg.AuditMark]
 	if !ok {
-		fmt.Println(audMsg.AuditMark, "hash key not exist")
+		log.Println(audMsg.AuditMark, "hash key not exist")
 		return false
 	}
 	log.Printf("ruleList: %+v", audType)
@@ -48,7 +46,6 @@ func (tk *ConsumeTask) workAuditMessage(msg []byte) bool {
 	//自动通过|驳回|转人工审核（写db)
 	tk.insertAuditMsg(audMsg, audBd, &audType, audStat, rulMch)
 
-	log.Println("<==audit message task done !!")
 	return true
 }
 

@@ -80,8 +80,10 @@ func (mq *MQ) ConsumeBind(qn string, fn func([]byte) bool, noAck bool) {
 	go func() {
 		for d := range msgs {
 			log.Printf("Received message: %s", d.Body)
-			fn(d.Body)
-			if !noAck {
+			log.Printf("==> [%s] task start...", qn)
+			success := fn(d.Body)
+			log.Printf("<== [%s] task done, result: [%v]!!", qn, success)
+			if success && !noAck {
 				d.Ack(false)
 			}
 		}

@@ -65,6 +65,9 @@ func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
 	rows.Close()
 
 	//----------规则条目
+	if len(typeIds) == 0 {
+		return nil
+	}
 	stmt, err := db.Prepare("select id ,template_id, items_relation, process_type, workflow_id, base_profit_margin " +
 		"from audit_rule WHERE template_id IN (" + mydb.Concat(typeIds) + ") " +
 		"ORDER BY sort ASC;")
@@ -107,6 +110,9 @@ func (tk *ConsumeTask) GetRuleItems() AuditTypeList {
 	//log.Println("hashAuditTypeList:\n", hashAuditTypeList)
 
 	//--------比较项
+	if len(rids) == 0 {
+		return nil
+	}
 	sql = "select id, rule_id,compare_type,field,operation,value from audit_rule_item WHERE rule_id IN (" + mydb.Concat(rids) + ")"
 	stmt, err = db.Prepare(sql)
 	if err != nil {
