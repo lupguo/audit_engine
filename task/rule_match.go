@@ -61,7 +61,7 @@ func bussDataToString(field string, bussData *rabbit.BusinessData, baseRate floa
 	case "pipelineCode":
 		return bussData.PipelineCode
 	case "priceLoss":
-		return fmt.Sprintf("%0.4f", bussData.ChargePrice*(bussData.Rate-baseRate)/6.1)
+		return GetPriceLoss(bussData.ChargePrice, bussData.Rate, baseRate)
 	case "rate":
 		return fmt.Sprintf("%0.4f", bussData.Rate)
 	case "sysLabelId":
@@ -72,8 +72,15 @@ func bussDataToString(field string, bussData *rabbit.BusinessData, baseRate floa
 	return "=X="
 }
 
+//get priceLoss
+func GetPriceLoss(chargePrice float64, rate float64, baseRate float64) string {
+	return fmt.Sprintf("%0.4f", chargePrice*(rate-baseRate)/6.1)
+}
+
 //rule多条规则比较
-//返回结果: 1 系统通过，2 系统驳回，3 转人工审核
+//返回结果:
+// int:	1 系统通过，2 系统驳回，3 转人工审核
+// RuleMatch: 匹配的规则明细
 func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, RuleMatch) {
 
 	var rml []RuleMatch
@@ -133,5 +140,5 @@ func RunRuleMatch(bussData *rabbit.BusinessData, auditType *AuditType) (int, Rul
 	}
 
 	//如果都不匹配，默认规则放行
-	return AuditStatus[SysDefPass], RuleMatch{RuleId: 0, FlowId: 0}
+	return AuditStatus[SysDefPass], RuleMatch{}
 }

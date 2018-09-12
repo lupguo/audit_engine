@@ -3,14 +3,14 @@
   "version": "v0.0.1 beta",
   "rabbitmq": {
     "soa": {
-      "vhost": "mac_soa_vhost",
+      "vhost": "soa_vhost",
       "host": "localhost",
       "port": 5672,
       "user": "guest",
       "pass": "guest"
     },
     "gb": {
-      "vhost": "mac_gb_vhost",
+      "vhost": "gb_vhost",
       "host": "localhost",
       "port": 5672,
       "user": "guest",
@@ -20,9 +20,10 @@
   "mysql": {
     "host": "localhost",
     "port": 3306,
-    "user": "root",
+    "user": "auditcenter",
     "pass": "Secret123.",
     "dbname": "obs_gb_test",
-    "protocol": "tcp"
+    "protocol": "tcp",
+    "conn_max_life": 120
   }
 }
