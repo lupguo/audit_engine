@@ -22,10 +22,6 @@ type Config struct {
 
 var DB *sql.DB
 
-func init() {
-	log.Println("mysql init...")
-}
-
 func Connect(dbcf Config) *sql.DB {
 	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s", dbcf.User, dbcf.Pass, dbcf.Protocol, dbcf.Host, dbcf.Port, dbcf.DbName)
 	db, err := sql.Open("mysql", dsn)

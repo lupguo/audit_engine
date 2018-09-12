@@ -17,15 +17,11 @@ var (
 )
 
 func main() {
-	//cmd args parse from cmdline
+	//cmdline parse
 	cmd.Parse()
 
+	//config got from config.json
 	cfg.InitByCmd(cmd)
-
-	//show message
-	if out := cfg.ShowInfo(cmd); out {
-		return
-	}
 
 	//任务mq初始化
 	tk = task.ConsumeTask{TkCfg: cfg}

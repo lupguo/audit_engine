@@ -1,7 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"github.com/spf13/pflag"
+	"log"
+	"os"
 	"strings"
 )
 
@@ -38,8 +41,29 @@ func (cmd *CmdArgs) Parse() {
 	pflag.StringVarP(&cmd.MsgData, "msg_data", "D", "", `message data used for publish`)
 	pflag.IntVarP(&cmd.RepNumber, "rep_number", "n", 1, `message data send rep_number time`)
 	pflag.Parse()
+
+	//show info
+	cmd.ShowInfo()
 }
 
+//show all info
+func (cmd *CmdArgs) ShowInfo() {
+	switch {
+	case cmd.V:
+		cmd.PrintVersion()
+		os.Exit(0)
+	case cmd.H:
+		pflag.PrintDefaults()
+		os.Exit(0)
+	}
+}
+
+//engine show
+func (cmd *CmdArgs) PrintVersion() {
+	log.Println(fmt.Sprintf("%s, %s", "Audit Rule Engine", "v0.0.1 beta"))
+}
+
+//queue list
 func availQueue() string {
 	var q []string
 	for _, v := range QueName {

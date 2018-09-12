@@ -1,8 +1,6 @@
 package config
 
 import (
-	"fmt"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/tkstorm/audit_engine/mydb"
 	"github.com/tkstorm/audit_engine/rabbit"
@@ -17,16 +15,10 @@ type EngineInfo struct {
 
 type CFG struct {
 	cmd        CmdArgs
-	EInfo      EngineInfo
 	Test       bool
 	ConfigFile string
 	RabbitMq   map[string]rabbit.Config
 	Mysql      mydb.Config
-}
-
-//version info
-func (cfg *CFG) GetVersion(egi EngineInfo) string {
-	return fmt.Sprintf("%s, %s", egi.Name, egi.Version)
 }
 
 //config init
@@ -40,12 +32,6 @@ func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 	cfg.cmd = cmd
 	cfg.Test = cmd.T
 	cfg.ConfigFile = cmd.Cfg
-
-	//version
-	cfg.EInfo = EngineInfo{
-		Name:    viper.GetString("name"),
-		Version: viper.GetString("version"),
-	}
 
 	//init rabbitmq config
 	cfg.RabbitMq = make(map[string]rabbit.Config)
@@ -70,31 +56,11 @@ func (cfg *CFG) InitByCmd(cmd CmdArgs) {
 		ConnMaxLife: viper.GetInt("mysql.conn_max_life"),
 	}
 
+	//print env info
+	cfg.printEnv()
 }
 
-//show all info
-func (cfg *CFG) ShowInfo(cmd CmdArgs) (out bool) {
-	switch {
-	case cmd.V:
-		cfg.PrintVersion()
-	case cmd.H:
-		cfg.PrintHelpInfo()
-	default:
-		cfg.PrintEnv()
-		return false
-	}
-	return true
-}
-
-func (cfg *CFG) PrintEnv() {
-	cfg.PrintVersion()
+func (cfg *CFG) printEnv() {
+	cfg.cmd.PrintVersion()
 	log.Printf("cmdline: %+v\n", cfg.cmd)
-}
-
-func (cfg *CFG) PrintVersion() {
-	log.Println(cfg.GetVersion(cfg.EInfo))
-}
-
-func (cfg *CFG) PrintHelpInfo() {
-	pflag.PrintDefaults()
 }
